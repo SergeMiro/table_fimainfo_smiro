@@ -1,0 +1,1 @@
+# table_fimainfo_smiro
