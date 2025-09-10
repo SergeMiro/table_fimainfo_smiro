@@ -388,13 +388,13 @@ function generateDynamicFilters(options = {}) {
 			options.enableTooltip === true ? ` title="Filtrer par ${column.label.toLowerCase()}"` : '';
 
 		const filterHtml = `
-	     <div class="relative">
-	       <input type="text" id="${filterId}" placeholder="${column.label}" class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm w-full transition-colors duration-150 ease-in-out focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-10"${tooltip}>
-	       <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-	         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-	       </svg>
-	     </div>
-	   `;
+		    <div class="relative">
+		      <input type="text" id="${filterId}" placeholder="${column.label.toLowerCase()}" class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm w-full transition-colors duration-150 ease-in-out focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:ring-opacity-10"${tooltip}>
+		      <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+		      </svg>
+		    </div>
+		  `;
 		filtersGrid.append(filterHtml);
 	});
 
