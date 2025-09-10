@@ -81,6 +81,18 @@ function escapeAttr(s) {
 }
 
 /* ====== Configuration des colonnes ====== */
+function parseColumnSpec(colSpec) {
+	// Support for 'key as label' syntax
+	const asIndex = colSpec.indexOf(' as ');
+	if (asIndex !== -1) {
+		const key = colSpec.substring(0, asIndex).trim();
+		const label = colSpec.substring(asIndex + 4).trim();
+		return { key, label };
+	} else {
+		return { key: colSpec, label: null };
+	}
+}
+
 function generateColumnDefinitions(sqlData, options = {}) {
 	if (!sqlData || sqlData.length === 0) {
 		return { columns: {}, visibility: {} };
@@ -95,7 +107,9 @@ function generateColumnDefinitions(sqlData, options = {}) {
 
 	// Si includedColumns est spécifié, utiliser l'ordre de includedColumns
 	if (includedColumns.length > 0) {
-		includedColumns.forEach((colName) => {
+		includedColumns.forEach((colSpec) => {
+			const { key: colName, label: customLabel } = parseColumnSpec(colSpec);
+
 			// Chercher la colonne dans les données (insensible à la casse)
 			const dataKey = Object.keys(firstRow).find(key =>
 				key.toLowerCase() === colName.toLowerCase() ||
@@ -104,7 +118,7 @@ function generateColumnDefinitions(sqlData, options = {}) {
 
 			if (dataKey) {
 				const columnKey = dataKey.toLowerCase().replace(/\s+/g, '_');
-				const cleanLabel = dataKey.replace(/[-_]/g, ' ').toUpperCase();
+				const cleanLabel = customLabel || dataKey.replace(/[-_]/g, ' ').toUpperCase();
 				columns[columnKey] = {
 					key: dataKey,
 					label: cleanLabel,
@@ -1235,3 +1249,129 @@ function createTable(options = {}) {
 		}
 	};
 }
+
+
+// Initialisation des tooltips sur Floating UI
+function initializeFloatingUITooltips() {
+	const { computePosition, autoUpdate, offset, flip, shift, hide: hideMw, arrow } = window.FloatingUIDOM;
+
+	const ATTR = 'data-tooltip';
+	const ATTR_PLACEMENT = 'data-placement';
+
+	let cleanup = null;
+	let currentRef = null;
+
+	// élément DOM unique du tooltip
+	const tooltip = document.createElement('div');
+	tooltip.setAttribute('role', 'tooltip');
+	tooltip.id = 'tw-tooltip';
+	tooltip.className = [
+		'pointer-events-none select-none z-[9999]',
+		'rounded-xl px-3 py-2 text-sm font-medium',
+		'bg-white/90 backdrop-blur-md shadow-xl border border-white/30',
+		'text-gray-900',
+		'opacity-0 translate-y-1 transition-opacity duration-150 ease-out',
+	].join(' ');
+	tooltip.style.position = 'fixed';
+	tooltip.style.maxWidth = '50vw';
+
+	const arrowEl = document.createElement('div');
+	arrowEl.setAttribute('data-arrow', '');
+	arrowEl.className = 'absolute w-2 h-2 rotate-45 bg-white/90 backdrop-blur-md border-r border-b border-white/30';
+	tooltip.appendChild(arrowEl);
+	document.body.appendChild(tooltip);
+
+	function show(ref) {
+		const content = ref.getAttribute(ATTR);
+		if (!content) return;
+
+		// remplir le texte
+		tooltip.textContent = '';
+		const span = document.createElement('span');
+		span.textContent = content;
+		tooltip.appendChild(span);
+		tooltip.appendChild(arrowEl);
+		tooltip.style.display = 'block';
+
+		if (cleanup) cleanup();
+		cleanup = autoUpdate(ref, tooltip, async () => {
+			const placement = ref.getAttribute(ATTR_PLACEMENT) || 'top';
+
+			const { x, y, placement: finalPlacement, middlewareData } = await computePosition(ref, tooltip, {
+				strategy: 'fixed', // important pour les tableaux avec défilement
+				placement,
+				middleware: [
+					offset(8),
+					flip(),
+					shift({ padding: 8 }),
+					hideMw(),
+					arrow({ element: arrowEl }),
+				],
+			});
+
+			tooltip.style.left = `${x}px`;
+			tooltip.style.top = `${y}px`;
+
+			const isHidden = middlewareData.hide?.referenceHidden || middlewareData.hide?.escaped;
+			tooltip.style.opacity = isHidden ? '0' : '1';
+			tooltip.style.transform = isHidden ? 'translateY(4px)' : 'translateY(0)';
+
+			// positionner la flèche
+			const staticSide = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' }[finalPlacement.split('-')[0]];
+			Object.assign(arrowEl.style, { left: '', right: '', top: '', bottom: '' });
+			arrowEl.style[staticSide] = `-6px`;
+
+			const { x: ax = 0, y: ay = 0 } = middlewareData.arrow || {};
+			if (finalPlacement.startsWith('top') || finalPlacement.startsWith('bottom')) {
+				arrowEl.style.left = `${ax}px`;
+				arrowEl.style.top = '';
+				arrowEl.style.transform = 'translateX(-50%) rotate(45deg)';
+			} else {
+				arrowEl.style.top = `${ay}px`;
+				arrowEl.style.left = '';
+				arrowEl.style.transform = 'translateY(-50%) rotate(45deg)';
+			}
+		});
+	}
+
+	function hideTooltip() {
+		if (cleanup) { cleanup(); cleanup = null; }
+		currentRef = null;
+		tooltip.style.opacity = '0';
+		tooltip.style.display = 'none';
+		tooltip.textContent = '';
+		tooltip.appendChild(arrowEl);
+	}
+
+	// délégation d'événements — fonctionne aussi pour les lignes ajoutées dynamiquement
+	document.addEventListener('mouseover', (e) => {
+		const ref = e.target.closest(`[${ATTR}]`);
+		if (!ref) return;
+		if (currentRef === ref) return;
+		currentRef = ref;
+		show(ref);
+	});
+
+	document.addEventListener('mouseout', (e) => {
+		if (!currentRef) return;
+		const to = e.relatedTarget;
+		if (to && (currentRef.contains(to) || tooltip.contains(to))) return;
+		hideTooltip();
+	});
+
+	document.addEventListener('focusin', (e) => {
+		const ref = e.target.closest(`[${ATTR}]`);
+		if (ref) { currentRef = ref; show(ref); }
+	});
+
+	document.addEventListener('focusout', (e) => {
+		const to = e.relatedTarget;
+		if (to && (currentRef?.contains(to) || tooltip.contains(to))) return;
+		hideTooltip();
+	});
+
+	document.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape') hideTooltip();
+	});
+}
+
