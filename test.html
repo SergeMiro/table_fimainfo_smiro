@@ -9,21 +9,6 @@
 	<!-- Tailwind CSS (pour la production, mieux compiler via CLI/PostCSS) -->
 	<script src="https://cdn.tailwindcss.com"></script>
 
-	<style>
-		/* Fix for checkbox color in non-WebKit browsers */
-		input[type="checkbox"]:checked {
-			accent-color: #2563eb;
-			/* blue-600 */
-		}
-
-		/* Firefox specific */
-		@-moz-document url-prefix() {
-			input[type="checkbox"]:checked {
-				background-color: #2563eb;
-				border-color: #2563eb;
-			}
-		}
-	</style>
 
 	<!-- jQuery -->
 	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -40,9 +25,12 @@
 	<div class="container mx-auto py-8">
 		<h1 class="text-2xl font-bold text-center mb-8">Test Tableau Recherche</h1>
 
-		<!-- Conteneur pour le tableau -->
-		<div id="module_recherche_tableau">
+		<!-- Conteneur pour le tableau-1 -->
+		<div id="module_recherche_tableau" data-instance-id="module_recherche_tableau">
+		</div>
 
+		<!-- Conteneur pour le tableau-2 -->
+		<div id="module_historique_media" data-instance-id="module_historique_media">
 		</div>
 	</div>
 
@@ -80,8 +68,29 @@
 		 * =============================================================================
 		 */
 
+		// Données pour la deuxième table
+		const historiqueData = [];
+		for (let i = 0; i < 30; i++) {
+			historiqueData.push({
+				'Indice': 300000 + i,
+				'Agent': ['Alice MARTIN', 'Bob DUPONT', 'Claire ROBERT', 'David LEBLANC', 'Emma MOREAU'][i % 5],
+				'Date appel': `2024-09-${String(1 + (i % 30)).padStart(2, '0')} ${String(8 + (i % 12)).padStart(2, '0')}:${String(0 + (i % 60)).padStart(2, '0')}`,
+				'Nom prospect': `Prospect ${i + 1}`,
+				'Nom société': ['TechCorp', 'DataSys', 'WebDev', 'SoftWare', 'Innovate'][i % 5],
+				'Statut': ['Positif', 'Refus', 'Rappel', 'RDV', 'En cours', 'Nouveau'][i % 6],
+				'Commentaire': `Commentaire historique ${i + 1}`,
+				'Tel port': `07 ${String(10 + (i % 90)).padStart(2, '0')} ${String(10 + (i % 90)).padStart(2, '0')} ${String(10 + (i % 90)).padStart(2, '0')} ${String(10 + (i % 90)).padStart(2, '0')}`,
+				'contact_adresse': `Adresse ${i + 1}`,
+				'contact_cp': `${75000 + i}`,
+				'contact_ville': ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice'][i % 5],
+				'PRIORITE': i % 3,
+				'montant': i % 4 === 0 ? String((i + 1) * 500) : ''
+			});
+		}
+
 		// Initialisation au chargement : true / false
 		$(document).ready(function () {
+			// Première table
 			createTable({
 				containerId: 'module_recherche_tableau',
 				data: null,          // null => utiliser les données de démonstration de m_recherche_tableau_tailwind.js
@@ -100,15 +109,45 @@
 					'Nom prospect as Prospect',
 					'Nom société as Société',
 					'Statut',
-					'Commentaire',
+					'Commentaire as agent_comment',
 					'Tel port as Téléphone',
 					'contact_adresse as Adresse',
 					'contact_cp as Code Postal'
 				],
 				excludedColumns: [], // Colonnes à exclure "key"
 				colorPalette: [], // TODO color theme: [headerBg, buttonBg]
-				badgeColumns: ['Statut'], // Collones avec badges
+				//badgeColumns: ['Agent'], // Collones avec badges
+				badgeCounts: ['Agent', 'Statut', 'Nom société'],
 				orderByColumns: true // Triage des colonnes
+			});
+
+			// Deuxième table
+			createTable({
+				containerId: 'module_historique_media',
+				data: historiqueData, // Utiliser les nouvelles données
+				enableSearch: true,
+				enableFilters: true,
+				enableColumnToggle: true,
+				enableTooltip: true,
+				enablePageSizeSelector: true,
+				enableActionButton: false, // Désactiver le bouton d'action pour la deuxième table
+				itemsPerPageCount: 10,
+				includedColumns: [
+					'Indice as id',
+					'Agent',
+					'Date appel',
+					'Nom prospect as Prospect',
+					'Nom société as Société',
+					'Statut',
+					'Commentaire as agent_comment',
+					'Tel port as Téléphone',
+					'contact_adresse as Adresse',
+					'contact_cp as Code Postal'
+				],
+				excludedColumns: [],
+				colorPalette: ['bg-green-50', 'bg-green-600'], // Palette verte pour différencier
+				badgeColumns: ['Statut'],
+				orderByColumns: true
 			});
 
 			// Initialiser immédiatement les tooltips (sans setTimeout)
