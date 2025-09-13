@@ -1,20 +1,31 @@
 /**
- * lib_table_fimainfo_smiro.js
- * Полная инстанс-ориентированная версия таблицы
- * Поддерживает:
- *  - все опции/функции из старого файла (поиск, фильтры, tri, pagination, badges, formatting)
- *  - per-instance state (несколько таблиц на странице)
- *  - callbacks: onRowSelect, onRowDblClick, onReady, onRenderComplete, onExport
- *  - exportCSV, exportExcel
- *  - localStorage persistence (visible columns & itemsPerPage)
- *  - optional virtualization (options.virtualize)
- *  - Floating UI / tippy.js integration (если доступны)
- *  - legacy compatibility: сохраняется GLOBAL.indiceFiche; опция legacyShim (по умолчанию true) создаёт helper window.getFimainfoLegacyId(name)
+ * lib_table_fimainfo_smiro_vanilla.js
+ * Version Vanilla JS COMPLETE (sans jQuery) de la bibliothèque de table
+ * Basée sur lib_table_fimainfo_smiro.js avec toutes les fonctionnalités
+ * 
+ * Toutes les options supportées:
+ * - enableSearch: true/false - Recherche globale
+ * - enableFilters: true/false - Filtres par colonne  
+ * - enableColumnToggle: true/false - Basculement d'affichage des colonnes
+ * - enableTooltip: true/false - Tooltips
+ * - enablePageSizeSelector: true/false - Sélecteur de taille de page
+ * - enableActionButton: true/false - Bouton d'action "Voir la fiche"
+ * - itemsPerPageCount: number - Nombre d'éléments par page par défaut
+ * - includedColumns: array avec "key as alias" - Colonnes à inclure
+ * - excludedColumns: array - Colonnes à exclure
+ * - colorPalette: [headerBg, buttonBg] - Palette de couleurs
+ * - badgeColumns: array - Colonnes avec badges
+ * - badgeCounts: array - Colonnes avec comptage de badges
+ * - orderByColumns: true/false - Tri des colonnes
+ * - virtualize: true/false - Virtualisation pour grandes tables
+ * - virtualizeThreshold: number - Seuil de virtualisation
+ * - theme: 'default'/'dark'/'light' - Thème
+ * - legacyShim: true/false - Compatibilité legacy
  *
  * Требования: moment.js должен быть подключён.
  */
 
-/* ====== CORE (per-instance state) ====== */
+/* ====== CORE (per-instance state) - IDENTIQUE ====== */
 const INSTANCES = new Map();
 function idp(cid, name) { return `${cid}__${name}`; }
 function getInstanceState(cid) {
@@ -39,7 +50,7 @@ function getInstanceState(cid) {
 	return INSTANCES.get(cid);
 }
 
-/* ====== Themes & utils ====== */
+/* ====== Themes & utils - IDENTIQUE ====== */
 const colorThemes = {
 	default: { headerBg: 'bg-gray-50', buttonBg: 'bg-blue-600', buttonHover: 'hover:bg-blue-700', badgeBase: 'bg-blue-100 text-blue-800' },
 	dark: { headerBg: 'bg-slate-800', buttonBg: 'bg-slate-600', buttonHover: 'hover:bg-slate-700', badgeBase: 'bg-slate-100 text-slate-800' },
@@ -49,7 +60,7 @@ function escapeAttr(s) { if (s == null) return ''; return String(s).replace(/&/g
 function generateHoverClass(bg) { const m = (bg || '').match(/bg-(\w+)-(\d+)/); if (m) { const c = m[1], sh = +m[2]; return `hover:bg-${c}-${Math.min(900, sh + 100)}`; } return 'hover:bg-gray-700'; }
 function getCurrentPalette(options) { if (options && options.customPalette) return options.customPalette; return colorThemes[(options && options.theme) || 'default'] || colorThemes.default; }
 
-/* ====== Column detection with 'as' support ====== */
+/* ====== Column detection with 'as' support - IDENTIQUE ====== */
 function generateColumnDefinitions(sqlData, options = {}) {
 	if (!sqlData || sqlData.length === 0) return { columns: {}, visibility: {} };
 	const firstRow = sqlData[0];
@@ -90,7 +101,7 @@ function generateColumnDefinitions(sqlData, options = {}) {
 	return { columns, visibility };
 }
 
-/* ====== Persistence ====== */
+/* ====== Persistence - IDENTIQUE ====== */
 function persistSettings(cid, state) {
 	try {
 		localStorage.setItem(`table_settings_${cid}`, JSON.stringify({ visibleColumns: state.visibleColumns, itemsPerPage: state.itemsPerPage }));
@@ -102,10 +113,9 @@ function loadPersistedSettings(cid) {
 	} catch (e) { return null; }
 }
 
-/* ====== Floating UI tooltip (exact user design) ====== */
-/* — сохраняю полностью как просил — */
+/* ====== Floating UI tooltip - Version Corrigée ====== */
 function initializeFloatingUITooltips() {
-	if (!window.FloatingUIDOM) return; // FUI не подключён
+	if (!window.FloatingUIDOM) return;
 
 	try {
 		// Accès direct aux méthodes de Floating UI
@@ -233,11 +243,11 @@ function initializeFloatingUITooltips() {
 		console.warn('Erreur d\'initialisation des tooltips Floating UI:', error);
 	}
 }
+
 // Simple tooltip fallback
 function initializeSimpleTooltips() {
 	console.log('Initialisation des tooltips simples...');
 
-	// Supprime les anciens tooltips s'ils existent
 	if (document.getElementById('simple-tooltip')) {
 		document.getElementById('simple-tooltip').remove();
 	}
@@ -269,7 +279,6 @@ function initializeSimpleTooltips() {
 		let top = rect.top - tooltipRect.height - 8;
 		let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
 
-		// Ajustements si le tooltip sort de l'écran
 		if (top < 8) {
 			top = rect.bottom + 8;
 		}
@@ -310,7 +319,6 @@ function initializeSimpleTooltips() {
 	});
 }
 
-// гарантия одноразовой инициализации
 function ensureFloatingUITooltipsOnce() {
 	if (window.__fimainfoFloatingUITooltipInitialized) return;
 
@@ -334,7 +342,7 @@ function ensureFloatingUITooltipsOnce() {
 	}
 }
 
-/* ====== Shell render per-instance ====== */
+/* ====== Shell render per-instance - CONVERTI VANILLA JS ====== */
 function afficheRechercheTableau(options = {}) {
 	if (!options.containerId) { console.error('afficheRechercheTableau: containerId required'); return; }
 	const cid = options.containerId;
@@ -342,22 +350,25 @@ function afficheRechercheTableau(options = {}) {
 	state.options = options;
 	state.itemsPerPage = options.itemsPerPageCount || state.itemsPerPage;
 
-	const container = $('#' + cid);
-	if (container.length === 0) { console.error(`Container #${cid} not found`); return; }
-	container.empty();
+	const container = document.getElementById(cid);
+	if (!container) { console.error(`Container #${cid} not found`); return; }
+	container.innerHTML = '';
 
 	const persisted = loadPersistedSettings(cid);
-	if (persisted) { if (persisted.visibleColumns) state.visibleColumns = persisted.visibleColumns; if (persisted.itemsPerPage) state.itemsPerPage = persisted.itemsPerPage; }
+	if (persisted) {
+		if (persisted.visibleColumns) state.visibleColumns = persisted.visibleColumns;
+		if (persisted.itemsPerPage) state.itemsPerPage = persisted.itemsPerPage;
+	}
 
 	const palette = getCurrentPalette(options);
 	const minWidth = (options.includedColumns && options.includedColumns.length ? options.includedColumns.length : 8) * 140;
 
-	container.append(`
+	container.insertAdjacentHTML('beforeend', `
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 w-full mx-auto">
       <!-- Header -->
       <div class="px-4 py-4 border-b border-gray-200 ${palette.headerBg}">
         <div class="flex items-center justify-between">
-          ${options.enableSearch ? `
+          ${options.enableSearch !== false ? `
             <div class="flex-1 max-w-md mr-4">
               <div class="relative">
                 <input type="text" id="${idp(cid, 'global_search')}" placeholder="Rechercher dans tous les champs affichés ..." class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
@@ -367,7 +378,7 @@ function afficheRechercheTableau(options = {}) {
           ${options.enableColumnToggle !== false ? `
             <div class="relative">
               <button id="${idp(cid, 'columns_toggle')}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z"/></svg>
                 Colonnes
                 <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </button>
@@ -382,9 +393,10 @@ function afficheRechercheTableau(options = {}) {
       </div>
 
       <!-- Filters -->
+      ${options.enableFilters !== false ? `
       <div id="${idp(cid, 'filters_container')}" class="px-4 py-4 bg-gray-50 border-b border-gray-200">
         <div id="${idp(cid, 'filters_grid')}" class="grid gap-3"></div>
-      </div>
+      </div>` : ''}
 
       <!-- Summary -->
       <div class="px-3 py-3 bg-gray-50 border-b border-gray-200">
@@ -443,7 +455,7 @@ function afficheRechercheTableau(options = {}) {
       ${options.enableActionButton !== false ? `
       <div class="px-4 py-4 border-t border-gray-200">
         <button id="${idp(cid, 'btn_fiche')}" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white ${palette.buttonBg} border border-transparent rounded-md ${palette.buttonHover} disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
           Voir la fiche
         </button>
         <button id="${idp(cid, 'export_csv')}" class="ml-3 px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">Export CSV</button>
@@ -453,63 +465,97 @@ function afficheRechercheTableau(options = {}) {
   `);
 
 	initializeTableEventListenersForInstance(cid);
-
-	// Floating UI — инициализируем один раз глобально
 	ensureFloatingUITooltipsOnce();
 
-	// onReady callback
 	if (typeof state.callbacks.onReady === 'function') {
 		try { state.callbacks.onReady(getPublicInstanceApi(cid)); } catch (e) { }
 	}
 
-	// legacy shim
 	if (options.legacyShim !== false) {
 		window.getFimainfoLegacyId = window.getFimainfoLegacyId || function (name) { return '#' + idp(cid, name); };
 	}
 }
 
-/* ====== Events per instance ====== */
+/* ====== Events per instance - CONVERTI VANILLA JS ====== */
 function initializeTableEventListenersForInstance(cid) {
 	const state = getInstanceState(cid);
 	const options = state.options || {};
-	const $globalSearch = $('#' + idp(cid, 'global_search'));
-	const $prev = $('#' + idp(cid, 'prev_page'));
-	const $next = $('#' + idp(cid, 'next_page'));
-	const $pageSize = $('#' + idp(cid, 'page_size_selector'));
-	const $columnsToggle = $('#' + idp(cid, 'columns_toggle'));
-	const $columnsDropdown = $('#' + idp(cid, 'columns_dropdown'));
-	const $btnFiche = $('#' + idp(cid, 'btn_fiche'));
-	const $exportCsv = $('#' + idp(cid, 'export_csv'));
-	const $exportXls = $('#' + idp(cid, 'export_xls'));
-	const $tableContainer = $('#' + idp(cid, 'table_container'));
 
-	$globalSearch.off('input').on('input', () => applyGlobalSearchForInstance(cid));
+	// Get elements
+	const globalSearch = document.getElementById(idp(cid, 'global_search'));
+	const prevBtn = document.getElementById(idp(cid, 'prev_page'));
+	const nextBtn = document.getElementById(idp(cid, 'next_page'));
+	const pageSize = document.getElementById(idp(cid, 'page_size_selector'));
+	const columnsToggle = document.getElementById(idp(cid, 'columns_toggle'));
+	const columnsDropdown = document.getElementById(idp(cid, 'columns_dropdown'));
+	const btnFiche = document.getElementById(idp(cid, 'btn_fiche'));
+	const exportCsv = document.getElementById(idp(cid, 'export_csv'));
+	const exportXls = document.getElementById(idp(cid, 'export_xls'));
+	const tableContainer = document.getElementById(idp(cid, 'table_container'));
 
-	$prev.off('click').on('click', () => {
-		if (state.currentPage > 1) { state.currentPage--; renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid); }
-	});
-	$next.off('click').on('click', () => {
-		const totalPages = Math.ceil(state.filteredData.length / state.itemsPerPage);
-		if (state.currentPage < totalPages) { state.currentPage++; renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid); }
-	});
-	$pageSize.off('change').on('change', function () {
-		state.itemsPerPage = parseInt($(this).val(), 10); state.currentPage = 1; persistSettings(cid, state);
-		renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid);
-	});
+	// Global search
+	if (globalSearch) {
+		globalSearch.addEventListener('input', () => applyGlobalSearchForInstance(cid));
+	}
 
-	if ($columnsToggle.length) {
-		$columnsToggle.off('click').on('click', (e) => { e.stopPropagation(); $columnsDropdown.toggleClass('hidden'); });
-		$(document).off('click.' + cid).on('click.' + cid, (e) => {
-			if (!$(e.target).closest('#' + idp(cid, 'columns_toggle') + ', #' + idp(cid, 'columns_dropdown')).length) $('#' + idp(cid, 'columns_dropdown')).addClass('hidden');
+	// Pagination
+	if (prevBtn) {
+		prevBtn.addEventListener('click', () => {
+			if (state.currentPage > 1) {
+				state.currentPage--;
+				renderTableForInstance(cid);
+				updatePaginationForInstance(cid);
+				updateResultsCountForInstance(cid);
+			}
 		});
 	}
 
-	if ($btnFiche.length) {
-		$btnFiche.off('click').on('click', () => {
-			$btnFiche.prop('disabled', true);
+	if (nextBtn) {
+		nextBtn.addEventListener('click', () => {
+			const totalPages = Math.ceil(state.filteredData.length / state.itemsPerPage);
+			if (state.currentPage < totalPages) {
+				state.currentPage++;
+				renderTableForInstance(cid);
+				updatePaginationForInstance(cid);
+				updateResultsCountForInstance(cid);
+			}
+		});
+	}
+
+	if (pageSize) {
+		pageSize.addEventListener('change', function () {
+			state.itemsPerPage = parseInt(this.value, 10);
+			state.currentPage = 1;
+			persistSettings(cid, state);
+			renderTableForInstance(cid);
+			updatePaginationForInstance(cid);
+			updateResultsCountForInstance(cid);
+		});
+	}
+
+	// Column toggle
+	if (columnsToggle && columnsDropdown) {
+		columnsToggle.addEventListener('click', (e) => {
+			e.stopPropagation();
+			columnsDropdown.classList.toggle('hidden');
+		});
+
+		document.addEventListener('click', (e) => {
+			if (!e.target.closest(`#${idp(cid, 'columns_toggle')}, #${idp(cid, 'columns_dropdown')}`)) {
+				columnsDropdown.classList.add('hidden');
+			}
+		});
+	}
+
+	// Action buttons
+	if (btnFiche) {
+		btnFiche.addEventListener('click', () => {
+			btnFiche.disabled = true;
 			if (window.GLOBAL && window.GLOBAL.contextCampaign === 'Entrant') {
-				window.GLOBAL.valueRechercheEntrant = $('#' + idp(cid, 'search_value')).val();
-				window.GLOBAL.typeRechercheEntrant = $('#' + idp(cid, 'search_field_entrant')).val();
+				const searchValue = document.getElementById(idp(cid, 'search_value'));
+				const searchField = document.getElementById(idp(cid, 'search_field_entrant'));
+				window.GLOBAL.valueRechercheEntrant = searchValue ? searchValue.value : '';
+				window.GLOBAL.typeRechercheEntrant = searchField ? searchField.value : '';
 				if (typeof showPage === 'function') showPage('Index');
 			} else {
 				const api = getPublicInstanceApi(cid);
@@ -520,118 +566,229 @@ function initializeTableEventListenersForInstance(cid) {
 		});
 	}
 
-	if ($exportCsv.length) { $exportCsv.off('click').on('click', () => { try { exportCSVForInstance(cid); if (typeof state.callbacks.onExport === 'function') state.callbacks.onExport('csv'); } catch (e) { } }); }
-	if ($exportXls.length) { $exportXls.off('click').on('click', () => { try { exportExcelForInstance(cid); if (typeof state.callbacks.onExport === 'function') state.callbacks.onExport('excel'); } catch (e) { } }); }
+	if (exportCsv) {
+		exportCsv.addEventListener('click', () => {
+			try {
+				exportCSVForInstance(cid);
+				if (typeof state.callbacks.onExport === 'function') state.callbacks.onExport('csv');
+			} catch (e) { }
+		});
+	}
 
-	// filters
-	$('#' + idp(cid, 'filters_grid')).off('input', 'input[type="text"]').on('input', 'input[type="text"]', () => applyFiltersForInstance(cid));
+	if (exportXls) {
+		exportXls.addEventListener('click', () => {
+			try {
+				exportExcelForInstance(cid);
+				if (typeof state.callbacks.onExport === 'function') state.callbacks.onExport('excel');
+			} catch (e) { }
+		});
+	}
 
-	// virtualization
-	if (options.virtualize) {
-		$tableContainer.off('scroll.virtual.' + cid).on('scroll.virtual.' + cid, () => virtualOnScrollHandler(cid));
+	// Filters
+	const filtersGrid = document.getElementById(idp(cid, 'filters_grid'));
+	if (filtersGrid) {
+		filtersGrid.addEventListener('input', (e) => {
+			if (e.target.type === 'text') {
+				applyFiltersForInstance(cid);
+			}
+		});
+	}
+
+	// Virtualization
+	if (options.virtualize && tableContainer) {
+		tableContainer.addEventListener('scroll', () => virtualOnScrollHandler(cid));
 	}
 }
 
-/* ====== Column dropdown ====== */
+/* ====== Column dropdown - CONVERTI VANILLA JS ====== */
 function initializeColumnDropdownForInstance(cid) {
 	const state = getInstanceState(cid);
-	const checkboxContainer = $('#' + idp(cid, 'column_checkboxes'));
-	if (checkboxContainer.length === 0) return;
-	checkboxContainer.empty();
+	const checkboxContainer = document.getElementById(idp(cid, 'column_checkboxes'));
+	if (!checkboxContainer) return;
+	checkboxContainer.innerHTML = '';
 
 	const sortedKeys = Object.keys(state.columnDefinitions).sort((a, b) => {
-		const ai = a.includes('indice'), bi = b.includes('indice'); if (ai && !bi) return -1; if (!ai && bi) return 1; return 0;
+		const ai = a.includes('indice'), bi = b.includes('indice');
+		if (ai && !bi) return -1;
+		if (!ai && bi) return 1;
+		return 0;
 	});
 
 	sortedKeys.forEach((k) => {
 		const col = state.columnDefinitions[k];
 		const checked = state.visibleColumns[k] !== false ? 'checked' : '';
-		checkboxContainer.append(`<label class="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"><input type="checkbox" ${checked} class="mr-3" data-column="${k}"><span class="text-sm text-gray-700">${col.label}</span></label>`);
+		const labelEl = document.createElement('label');
+		labelEl.className = 'flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer';
+		labelEl.innerHTML = `<input type="checkbox" ${checked} class="mr-3" data-column="${k}"><span class="text-sm text-gray-700">${col.label}</span>`;
+		checkboxContainer.appendChild(labelEl);
 	});
 
 	updateColumnDropdownTitleForInstance(cid);
 
-	checkboxContainer.off('change', 'input[type="checkbox"]').on('change', 'input[type="checkbox"]', function () {
-		const k = $(this).data('column'); state.visibleColumns[k] = $(this).is(':checked'); persistSettings(cid, state);
-		updateColumnDropdownTitleForInstance(cid); renderTableForInstance(cid);
+	checkboxContainer.addEventListener('change', function (e) {
+		if (e.target.type === 'checkbox') {
+			const k = e.target.dataset.column;
+			state.visibleColumns[k] = e.target.checked;
+			persistSettings(cid, state);
+			updateColumnDropdownTitleForInstance(cid);
+			renderTableForInstance(cid);
+		}
 	});
 }
+
 function updateColumnDropdownTitleForInstance(cid) {
 	const state = getInstanceState(cid);
-	const $title = $('#' + idp(cid, 'column_dropdown_title')); if (!$title.length) return;
+	const titleEl = document.getElementById(idp(cid, 'column_dropdown_title'));
+	if (!titleEl) return;
+
 	const allChecked = Object.keys(state.columnDefinitions).every(k => state.visibleColumns[k] !== false);
-	if (allChecked) { $title.text('Colonnes affichées'); }
-	else {
-		$title.html('<button class="w-full text-left">AFFICHER TOUTES LES COLONNES</button>').off('click').on('click', (e) => {
-			e.stopPropagation(); Object.keys(state.columnDefinitions).forEach(k => state.visibleColumns[k] = true);
-			$('#' + idp(cid, 'column_checkboxes') + ' input[type="checkbox"]').prop('checked', true); persistSettings(cid, state);
-			updateColumnDropdownTitleForInstance(cid); renderTableForInstance(cid);
-		});
+	if (allChecked) {
+		titleEl.textContent = 'Colonnes affichées';
+	} else {
+		titleEl.innerHTML = '<button class="w-full text-left">AFFICHER TOUTES LES COLONNES</button>';
+		const btn = titleEl.querySelector('button');
+		if (btn) {
+			btn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				Object.keys(state.columnDefinitions).forEach(k => state.visibleColumns[k] = true);
+				const checkboxes = document.querySelectorAll(`#${idp(cid, 'column_checkboxes')} input[type="checkbox"]`);
+				checkboxes.forEach(cb => cb.checked = true);
+				persistSettings(cid, state);
+				updateColumnDropdownTitleForInstance(cid);
+				renderTableForInstance(cid);
+			});
+		}
 	}
 }
 
-/* ====== Filters UI ====== */
+/* ====== Filters UI - CONVERTI VANILLA JS ====== */
 function generateDynamicFiltersForInstance(cid) {
 	const state = getInstanceState(cid);
-	const $grid = $('#' + idp(cid, 'filters_grid')); if (!$grid.length) return;
-	$grid.empty();
+	const grid = document.getElementById(idp(cid, 'filters_grid'));
+	if (!grid) return;
+	grid.innerHTML = '';
 
 	const cnt = Object.keys(state.columnDefinitions).length;
-	let gridCols = 'grid-cols-2 md:grid-cols-4 lg:grid-cols-8'; if (cnt <= 4) gridCols = 'grid-cols-2 md:grid-cols-4'; else if (cnt <= 6) gridCols = 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6';
-	$grid.removeClass().addClass('grid gap-3 ' + gridCols);
+	let gridCols = 'grid-cols-2 md:grid-cols-4 lg:grid-cols-8';
+	if (cnt <= 4) gridCols = 'grid-cols-2 md:grid-cols-4';
+	else if (cnt <= 6) gridCols = 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6';
+	grid.className = 'grid gap-3 ' + gridCols;
 
 	const sortedKeys = Object.keys(state.columnDefinitions).sort((a, b) => {
-		const ai = a.includes('indice'), bi = b.includes('indice'); if (ai && !bi) return -1; if (!ai && bi) return 1; return 0;
+		const ai = a.includes('indice'), bi = b.includes('indice');
+		if (ai && !bi) return -1;
+		if (!ai && bi) return 1;
+		return 0;
 	});
 
 	sortedKeys.forEach((k) => {
 		const col = state.columnDefinitions[k];
 		const fid = idp(cid, `filter_${k}`);
-		$grid.append(`
-      <div class="relative">
-        <input type="text" id="${fid}" placeholder="${escapeAttr(col.label)}" class="pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-        <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-      </div>
-    `);
+		const div = document.createElement('div');
+		div.className = 'relative';
+		div.innerHTML = `
+      <input type="text" id="${fid}" placeholder="${escapeAttr(col.label)}" class="pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+      <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    `;
+		grid.appendChild(div);
 	});
 }
 
-/* ====== Init data ====== */
+/* ====== Init data - CONVERTI VANILLA JS ====== */
 function initTableRechercheForInstance(data = [], options = {}) {
-	const cid = options.containerId; if (!cid) { console.error('initTableRechercheForInstance: containerId required'); return; }
+	const cid = options.containerId;
+	if (!cid) { console.error('initTableRechercheForInstance: containerId required'); return; }
 	const state = getInstanceState(cid);
 
+	console.log('🔄 initTableRechercheForInstance:', cid, 'données:', data.length);
+
 	let processed;
-	if (data && data.length > 0) { processed = Array.isArray(data) ? data.slice(0, 20000) : [data]; initializeColumnsForInstance(cid, processed, options); generateDynamicFiltersForInstance(cid); if (options.enableColumnToggle !== false) initializeColumnDropdownForInstance(cid); }
-	else { loadSampleDataForInstance(cid); return; }
+	if (data && data.length > 0) {
+		processed = Array.isArray(data) ? data.slice(0, 20000) : [data];
+		console.log('📊 Données traitées:', processed.length, 'enregistrements');
 
-	state.currentData = processed; state.filteredData = [...state.currentData]; state.currentPage = 1; state.itemsPerPage = options.itemsPerPageCount || state.itemsPerPage;
+		initializeColumnsForInstance(cid, processed, options);
+		console.log('✅ Colonnes initialisées');
 
-	renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid);
+		if (options.enableFilters !== false) {
+			generateDynamicFiltersForInstance(cid);
+			console.log('✅ Filtres générés');
+		}
+
+		if (options.enableColumnToggle !== false) initializeColumnDropdownForInstance(cid);
+	} else {
+		console.warn('❌ Pas de données, chargement des données d\'exemple');
+		loadSampleDataForInstance(cid);
+		return;
+	}
+
+	state.currentData = processed;
+	state.filteredData = [...state.currentData];
+	state.currentPage = 1;
+	state.itemsPerPage = options.itemsPerPageCount || state.itemsPerPage;
+
+	console.log('🎯 Avant renderTableForInstance, state:', {
+		currentData: state.currentData.length,
+		filteredData: state.filteredData.length,
+		columnDefinitions: Object.keys(state.columnDefinitions).length,
+		visibleColumns: Object.keys(state.visibleColumns).length
+	});
+
+	renderTableForInstance(cid);
+	console.log('✅ Table rendue');
+
+	updatePaginationForInstance(cid);
+	updateResultsCountForInstance(cid);
 	afficheTableauChargementForInstance(cid, false);
 
-	$('#' + idp(cid, 'btn_fiche')).prop('disabled', true);
-	if (typeof state.callbacks.onRenderComplete === 'function') { try { state.callbacks.onRenderComplete(getPublicInstanceApi(cid)); } catch (e) { } }
+	const btnFiche = document.getElementById(idp(cid, 'btn_fiche'));
+	if (btnFiche) btnFiche.disabled = true;
+
+	if (typeof state.callbacks.onRenderComplete === 'function') {
+		try { state.callbacks.onRenderComplete(getPublicInstanceApi(cid)); } catch (e) { }
+	}
 }
+
 function initializeColumnsForInstance(cid, sqlData, options = {}) {
 	const state = getInstanceState(cid);
 	const { columns, visibility } = generateColumnDefinitions(sqlData, options);
 	const persisted = loadPersistedSettings(cid);
-	if (persisted && persisted.visibleColumns) { Object.keys(visibility).forEach(k => { if (k in persisted.visibleColumns) visibility[k] = persisted.visibleColumns[k]; }); }
-	state.columnDefinitions = columns; state.visibleColumns = visibility; state.sortState = {};
+	if (persisted && persisted.visibleColumns) {
+		Object.keys(visibility).forEach(k => {
+			if (k in persisted.visibleColumns) visibility[k] = persisted.visibleColumns[k];
+		});
+	}
+	state.columnDefinitions = columns;
+	state.visibleColumns = visibility;
+	state.sortState = {};
 }
 
-/* ====== Render (with width:100% + equal th widths, virtualization option) ====== */
+/* ====== Render - CONVERTI VANILLA JS ====== */
 function renderTableForInstance(cid) {
+	console.log('🎨 renderTableForInstance démarré pour:', cid);
+
 	const st = getInstanceState(cid);
 	const options = st.options || {};
 	const startIndex = (st.currentPage - 1) * st.itemsPerPage;
 	const endIndex = startIndex + st.itemsPerPage;
 	const pageData = st.filteredData.slice(startIndex, endIndex);
 
-	const $thead = $('#' + idp(cid, 'table_head')); if ($thead.length) $thead.empty();
+	console.log('📄 Données de page:', pageData.length, 'sur', st.filteredData.length, 'total');
 
-	const keysSorted = Object.keys(st.columnDefinitions).sort((a, b) => { const ai = a.includes('indice'), bi = b.includes('indice'); if (ai && !bi) return -1; if (!ai && bi) return 1; return 0; });
+	const thead = document.getElementById(idp(cid, 'table_head'));
+	console.log('🔍 thead trouvé:', !!thead, 'ID:', idp(cid, 'table_head'));
+	if (thead) thead.innerHTML = '';
+
+	const keysSorted = Object.keys(st.columnDefinitions).sort((a, b) => {
+		const ai = a.includes('indice'), bi = b.includes('indice');
+		if (ai && !bi) return -1;
+		if (!ai && bi) return 1;
+		return 0;
+	});
+
+	console.log('📋 Colonnes triées:', keysSorted.length, keysSorted);
+	console.log('👁️ Colonnes visibles:', Object.keys(st.visibleColumns).filter(k => st.visibleColumns[k]));
+
 	const visibleCount = keysSorted.filter(k => st.visibleColumns[k]).length || 1;
 	const widthPercent = (100 / visibleCount) + '%';
 
@@ -641,7 +798,7 @@ function renderTableForInstance(cid) {
 		const col = st.columnDefinitions[k];
 		const sortDir = st.sortState[k];
 		let sortIcon = '';
-		if (options.orderByColumns) {
+		if (options.orderByColumns !== false) {
 			if (sortDir === 'asc') sortIcon = '<svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>';
 			else if (sortDir === 'desc') sortIcon = '<svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
 			else sortIcon = '<svg class="w-4 h-4 ml-1 inline opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>';
@@ -649,72 +806,105 @@ function renderTableForInstance(cid) {
 		headerHtml += `<th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" style="width:${widthPercent}" data-column="${k}"><div class="flex items-center justify-between"><span class="column-title">${escapeAttr(col.label)}</span>${sortIcon}</div></th>`;
 	});
 	headerHtml += '</tr>';
-	if ($thead.length) $thead.append(headerHtml);
 
-	const $tbody = $('#' + idp(cid, 'table_body')); if (!$tbody.length) return;
-	$tbody.empty();
+	console.log('📝 Header HTML généré:', headerHtml.length, 'caractères');
+	if (thead) thead.innerHTML = headerHtml;
 
-	const virtualize = options.virtualize && st.filteredData.length > (options.virtualizeThreshold || 1000);
-	if (virtualize) {
-		const rh = st.virtualRowHeight;
-		const $cont = $('#' + idp(cid, 'table_container'));
-		const ch = $cont.innerHeight() || 400;
-		const top = $cont.scrollTop() || 0;
-		const visibleRows = Math.ceil(ch / rh) + st.virtualBuffer;
-		const first = Math.max(0, Math.floor(top / rh) - st.virtualBuffer);
-		const last = Math.min(pageData.length - 1, first + visibleRows);
+	const tbody = document.getElementById(idp(cid, 'table_body'));
+	console.log('🔍 tbody trouvé:', !!tbody, 'ID:', idp(cid, 'table_body'));
+	if (!tbody) return;
+	tbody.innerHTML = '';
 
-		const topSpacer = first * rh;
-		const bottomSpacer = (pageData.length - 1 - last) * rh;
+	pageData.forEach((row, idx) => {
+		tbody.insertAdjacentHTML('beforeend', buildRowHtmlForInstance(cid, row, idx + startIndex));
+	});
 
-		if (topSpacer > 0) $tbody.append(`<tr style="height:${topSpacer}px"><td></td></tr>`);
-		for (let i = first; i <= last; i++) { $tbody.append(buildRowHtmlForInstance(cid, pageData[i], i + startIndex)); }
-		if (bottomSpacer > 0) $tbody.append(`<tr style="height:${bottomSpacer}px"><td></td></tr>`);
-	} else {
-		pageData.forEach((row, idx) => $tbody.append(buildRowHtmlForInstance(cid, row, idx + startIndex)));
+	// Row handlers with vanilla JS
+	const container = document.getElementById(cid);
+	if (container) {
+		// Click handler with event delegation
+		container.addEventListener('click', function (event) {
+			const clickedRow = event.target.closest('.table-row');
+			if (!clickedRow) return;
+
+			// Remove selection from all rows
+			const allRows = container.querySelectorAll('.table-row');
+			allRows.forEach(row => {
+				row.classList.remove('bg-blue-50');
+				row.classList.add('hover:bg-gray-50');
+			});
+
+			// Select current row
+			clickedRow.classList.remove('hover:bg-gray-50');
+			clickedRow.classList.add('bg-blue-50');
+
+			const indice = clickedRow.dataset.indice;
+			st.selectedIndice = indice;
+			if (window.GLOBAL) window.GLOBAL.indiceFiche = indice;
+			updateSelectedRowsForInstance(cid);
+			try {
+				if (typeof st.callbacks.onRowSelect === 'function')
+					st.callbacks.onRowSelect(getPublicInstanceApi(cid), indice);
+			} catch (e) { }
+		});
+
+		// Double click handler
+		container.addEventListener('dblclick', function (event) {
+			const clickedRow = event.target.closest('.table-row');
+			if (!clickedRow) return;
+
+			const indice = clickedRow.dataset.indice;
+			try {
+				if (typeof st.callbacks.onRowDblClick === 'function')
+					st.callbacks.onRowDblClick(getPublicInstanceApi(cid), indice);
+			} catch (e) { }
+		});
 	}
-
-	// row handlers within this instance only
-	const $container = $('#' + cid);
-	$container.find('.table-row').off('click').on('click', function () {
-		$container.find('.table-row').removeClass('bg-blue-50').addClass('hover:bg-gray-50');
-		$(this).removeClass('hover:bg-gray-50').addClass('bg-blue-50');
-		const indice = $(this).data('indice');
-		st.selectedIndice = indice;
-		if (window.GLOBAL) window.GLOBAL.indiceFiche = indice;
-		updateSelectedRowsForInstance(cid);
-		try { if (typeof st.callbacks.onRowSelect === 'function') st.callbacks.onRowSelect(getPublicInstanceApi(cid), indice); } catch (e) { }
-	});
-	$container.find('.table-row').off('dblclick').on('dblclick', function () {
-		const indice = $(this).data('indice');
-		try { if (typeof st.callbacks.onRowDblClick === 'function') st.callbacks.onRowDblClick(getPublicInstanceApi(cid), indice); } catch (e) { }
-	});
 
 	if (options.enableColumnToggle !== false) initializeColumnDropdownForInstance(cid);
 
-	if (options.orderByColumns) {
-		$('#' + idp(cid, 'table_head')).off('click', 'th[data-column]').on('click', 'th[data-column]', function (e) {
-			e.preventDefault();
-			const k = $(this).data('column');
-			const col = st.columnDefinitions[k]; if (!col) return;
+	if (options.orderByColumns !== false && thead) {
+		thead.addEventListener('click', function (event) {
+			const clickedTh = event.target.closest('th[data-column]');
+			if (!clickedTh) return;
+
+			event.preventDefault();
+			const k = clickedTh.dataset.column;
+			const col = st.columnDefinitions[k];
+			if (!col) return;
+
 			const current = st.sortState[k];
 			const next = current === 'asc' ? 'desc' : current === 'desc' ? null : 'asc';
 			Object.keys(st.sortState).forEach(x => st.sortState[x] = null);
 			st.sortState[k] = next;
+
 			if (next) st.filteredData = sortData(st.filteredData, col.key, next);
-			else { st.filteredData = [...st.currentData]; applyFiltersForInstance(cid); return; }
+			else {
+				st.filteredData = [...st.currentData];
+				applyFiltersForInstance(cid);
+				return;
+			}
 			st.currentPage = 1;
-			renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid);
+			renderTableForInstance(cid);
+			updatePaginationForInstance(cid);
+			updateResultsCountForInstance(cid);
 		});
 	}
 
-	if (typeof st.callbacks.onRenderComplete === 'function') { try { st.callbacks.onRenderComplete(getPublicInstanceApi(cid)); } catch (e) { } }
+	if (typeof st.callbacks.onRenderComplete === 'function') {
+		try { st.callbacks.onRenderComplete(getPublicInstanceApi(cid)); } catch (e) { }
+	}
 }
 
-/* row builder */
+/* ====== Row builder - IDENTIQUE ====== */
 function buildRowHtmlForInstance(cid, row, absoluteIndex) {
 	const st = getInstanceState(cid);
-	const keysSorted = Object.keys(st.columnDefinitions).sort((a, b) => { const ai = a.includes('indice'), bi = b.includes('indice'); if (ai && !bi) return -1; if (!ai && bi) return 1; return 0; });
+	const keysSorted = Object.keys(st.columnDefinitions).sort((a, b) => {
+		const ai = a.includes('indice'), bi = b.includes('indice');
+		if (ai && !bi) return -1;
+		if (!ai && bi) return 1;
+		return 0;
+	});
 	const indiceKey = Object.keys(row).find(k => k.toLowerCase().includes('indice')) || Object.keys(row)[0];
 	const indiceValue = row[indiceKey];
 	const isSelected = st.selectedIndice && st.selectedIndice == indiceValue;
@@ -728,31 +918,28 @@ function buildRowHtmlForInstance(cid, row, absoluteIndex) {
 		if ((col.key.toLowerCase().includes('date') || col.key.toLowerCase().includes('appel')) && val) {
 			const mm = moment(val); if (mm.isValid()) val = mm.format('DD/MM/YYYY HH:mm');
 		}
-		if (st.options && st.options.badgeColumns && st.options.badgeColumns.some(b => col.key.toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(col.key.toLowerCase()))) {
+		if (st.options && (st.options.badgeColumns || st.options.badgeCounts) &&
+			(st.options.badgeColumns || st.options.badgeCounts || []).some(b => col.key.toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(col.key.toLowerCase()))) {
 			html += `<td class="px-3 py-3 whitespace-nowrap">${getStatusBadge(val)}</td>`;
 		} else {
 			const fw = col.key.toLowerCase().includes('indice') ? 'font-medium' : '';
 			const strVal = String(val);
 
-			// Amélioration: détection plus précise du texte qui peut déborder
 			let isLong = false;
 			let needsTruncate = false;
 
 			if (strVal && strVal.length > 0) {
-				// Texte long basé sur le nombre de caractères
-				isLong = strVal.length > 20; // Réduit de 30 à 20 pour être plus strict
-
-				// Pour les colonnes de commentaire, on tronque plus agressivement
+				isLong = strVal.length > 20;
 				if (col.key.toLowerCase().includes('comment') || col.key.toLowerCase().includes('detail')) {
-					needsTruncate = strVal.length > 15; // Très strict pour les commentaires
-					isLong = strVal.length > 10; // Tooltip dès 10 caractères pour les commentaires
+					needsTruncate = strVal.length > 15;
+					isLong = strVal.length > 10;
 				} else {
 					needsTruncate = isLong;
 				}
 			}
 
 			const trunc = needsTruncate ? 'truncate' : '';
-			const tt = isLong && st.options && st.options.enableTooltip ? ` data-tooltip="${escapeAttr(strVal)}"` : '';
+			const tt = isLong && st.options && st.options.enableTooltip !== false ? ` data-tooltip="${escapeAttr(strVal)}"` : '';
 			html += `<td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900 ${fw} ${trunc}"${tt}>${escapeAttr(strVal)}</td>`;
 		}
 	});
@@ -760,26 +947,36 @@ function buildRowHtmlForInstance(cid, row, absoluteIndex) {
 	return html;
 }
 
-/* ====== Filtering / search ====== */
+/* ====== Filtering / search - CONVERTI VANILLA JS ====== */
 function applyFiltersForInstance(cid) {
 	const st = getInstanceState(cid);
 	const filters = {};
 	Object.keys(st.columnDefinitions).forEach(k => {
-		const $el = $('#' + idp(cid, `filter_${k}`)); if ($el.length) { const v = $el.val(); if (v) filters[k] = String(v).toLowerCase(); }
+		const el = document.getElementById(idp(cid, `filter_${k}`));
+		if (el) {
+			const v = el.value;
+			if (v) filters[k] = String(v).toLowerCase();
+		}
 	});
 
 	st.filteredData = st.currentData.filter(row => {
 		const fm = Object.keys(filters).every(k => {
-			const col = st.columnDefinitions[k]; const fv = filters[k]; const rv = row[col.key];
+			const col = st.columnDefinitions[k];
+			const fv = filters[k];
+			const rv = row[col.key];
 			if (!rv) return false;
 			if (col.key.toLowerCase().includes('tel')) return String(rv).replace(/\s/g, '').toLowerCase().includes(fv.replace(/\s/g, ''));
 			return String(rv).toLowerCase().includes(fv);
 		});
-		const gsEl = $('#' + idp(cid, 'global_search')); const gsv = gsEl.length ? String(gsEl.val()).toLowerCase() : '';
+
+		const gsEl = document.getElementById(idp(cid, 'global_search'));
+		const gsv = gsEl ? String(gsEl.value).toLowerCase() : '';
 		if (gsv) {
 			const gm = Object.keys(st.columnDefinitions).some(k => {
 				if (!st.visibleColumns[k]) return false;
-				const col = st.columnDefinitions[k]; const rv = row[col.key]; if (!rv) return false;
+				const col = st.columnDefinitions[k];
+				const rv = row[col.key];
+				if (!rv) return false;
 				if (col.key.toLowerCase().includes('tel')) return String(rv).replace(/\s/g, '').toLowerCase().includes(gsv.replace(/\s/g, ''));
 				return String(rv).toLowerCase().includes(gsv);
 			});
@@ -790,49 +987,98 @@ function applyFiltersForInstance(cid) {
 
 	st.currentPage = 1;
 	const active = Object.keys(st.sortState).find(k => st.sortState[k]);
-	if (active) { const col = st.columnDefinitions[active]; if (col) st.filteredData = sortData(st.filteredData, col.key, st.sortState[active]); }
-	renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid);
+	if (active) {
+		const col = st.columnDefinitions[active];
+		if (col) st.filteredData = sortData(st.filteredData, col.key, st.sortState[active]);
+	}
+	renderTableForInstance(cid);
+	updatePaginationForInstance(cid);
+	updateResultsCountForInstance(cid);
 }
-function applyGlobalSearchForInstance(cid) { applyFiltersForInstance(cid); }
 
-/* ====== Pagination & counts ====== */
+function applyGlobalSearchForInstance(cid) {
+	applyFiltersForInstance(cid);
+}
+
+/* ====== Pagination & counts - CONVERTI VANILLA JS ====== */
 function updatePaginationForInstance(cid) {
 	const st = getInstanceState(cid);
 	const totalPages = Math.max(1, Math.ceil(st.filteredData.length / st.itemsPerPage));
-	$('#' + idp(cid, 'current_page')).text(st.currentPage);
-	$('#' + idp(cid, 'total_pages')).text(totalPages);
-	$('#' + idp(cid, 'prev_page')).prop('disabled', st.currentPage === 1);
-	$('#' + idp(cid, 'next_page')).prop('disabled', st.currentPage === totalPages);
 
-	const $nums = $('#' + idp(cid, 'page_numbers')); $nums.empty();
+	const currentPageEl = document.getElementById(idp(cid, 'current_page'));
+	const totalPagesEl = document.getElementById(idp(cid, 'total_pages'));
+	const prevBtn = document.getElementById(idp(cid, 'prev_page'));
+	const nextBtn = document.getElementById(idp(cid, 'next_page'));
+
+	if (currentPageEl) currentPageEl.textContent = st.currentPage;
+	if (totalPagesEl) totalPagesEl.textContent = totalPages;
+	if (prevBtn) prevBtn.disabled = st.currentPage === 1;
+	if (nextBtn) nextBtn.disabled = st.currentPage === totalPages;
+
+	const nums = document.getElementById(idp(cid, 'page_numbers'));
+	if (nums) nums.innerHTML = '';
+
 	const addBtn = (p, active = false, dots = false) => {
-		if (dots) $nums.append('<span class="px-2 text-xs text-gray-400">...</span>');
-		else if (active) $nums.append(`<button class="px-2 py-1 text-xs text-white ${getCurrentPalette(st.options).buttonBg} rounded">${p}</button>`);
-		else $nums.append(`<button class="px-2 py-1 text-xs page-btn border border-gray-300 rounded hover:bg-gray-50" data-page="${p}">${p}</button>`);
+		if (!nums) return;
+		if (dots) {
+			const span = document.createElement('span');
+			span.className = 'px-2 text-xs text-gray-400';
+			span.textContent = '...';
+			nums.appendChild(span);
+		} else if (active) {
+			const btn = document.createElement('button');
+			btn.className = `px-2 py-1 text-xs text-white ${getCurrentPalette(st.options).buttonBg} rounded`;
+			btn.textContent = p;
+			nums.appendChild(btn);
+		} else {
+			const btn = document.createElement('button');
+			btn.className = 'px-2 py-1 text-xs page-btn border border-gray-300 rounded hover:bg-gray-50';
+			btn.dataset.page = p;
+			btn.textContent = p;
+			btn.addEventListener('click', function () {
+				st.currentPage = parseInt(this.dataset.page, 10);
+				renderTableForInstance(cid);
+				updatePaginationForInstance(cid);
+				updateResultsCountForInstance(cid);
+			});
+			nums.appendChild(btn);
+		}
 	};
+
 	if (totalPages >= 1) addBtn(1, st.currentPage === 1);
-	const d = 1; const rs = Math.max(2, st.currentPage - d), re = Math.min(totalPages - 1, st.currentPage + d);
+	const d = 1;
+	const rs = Math.max(2, st.currentPage - d);
+	const re = Math.min(totalPages - 1, st.currentPage + d);
 	if (rs > 2) addBtn(null, false, true);
-	for (let i = rs; i <= re; i++) { if (i !== 1 && i !== totalPages) addBtn(i, i === st.currentPage); }
+	for (let i = rs; i <= re; i++) {
+		if (i !== 1 && i !== totalPages) addBtn(i, i === st.currentPage);
+	}
 	if (re < totalPages - 1) addBtn(null, false, true);
 	if (totalPages > 1) addBtn(totalPages, st.currentPage === totalPages);
-
-	$('.page-btn').off('click').on('click', function () { st.currentPage = parseInt($(this).data('page'), 10); renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid); });
 }
+
 function updateResultsCountForInstance(cid) {
 	const st = getInstanceState(cid);
-	const total = st.currentData.length, filtered = st.filteredData.length;
+	const total = st.currentData.length;
+	const filtered = st.filteredData.length;
 	const start = filtered === 0 ? 0 : (st.currentPage - 1) * st.itemsPerPage + 1;
 	const end = filtered === 0 ? 0 : Math.min(start + st.itemsPerPage - 1, filtered);
-	$('#' + idp(cid, 'results_count')).text(`${filtered} résultats sur ${total}`);
-	$('#' + idp(cid, 'results_summary')).text(filtered > 0 ? `Affichage de ${start} à ${end} sur ${filtered} résultats` : 'Aucun résultat');
+
+	const countEl = document.getElementById(idp(cid, 'results_count'));
+	const summaryEl = document.getElementById(idp(cid, 'results_summary'));
+
+	if (countEl) countEl.textContent = `${filtered} résultats sur ${total}`;
+	if (summaryEl) summaryEl.textContent = filtered > 0 ? `Affichage de ${start} à ${end} sur ${filtered} résultats` : 'Aucun résultat';
 }
 
-/* ====== Selection helpers ====== */
+/* ====== Selection helpers - CONVERTI VANILLA JS ====== */
 function updateSelectedRowsForInstance(cid) {
 	const st = getInstanceState(cid);
 	const has = st.selectedIndice != null;
-	$('#' + idp(cid, 'btn_fiche')).prop('disabled', !has);
+
+	const btnFiche = document.getElementById(idp(cid, 'btn_fiche'));
+	if (btnFiche) btnFiche.disabled = !has;
+
 	if (has) {
 		const idxKey = Object.keys(st.currentData[0] || {}).find(k => k.toLowerCase().includes('indice')) || Object.keys(st.currentData[0] || {})[0];
 		const selected = (st.currentData || []).find(r => r[idxKey] == st.selectedIndice);
@@ -845,22 +1091,34 @@ function updateSelectedRowsForInstance(cid) {
 }
 
 /* ====== Virtual scroll ====== */
-function virtualOnScrollHandler(cid) { renderTableForInstance(cid); }
+function virtualOnScrollHandler(cid) {
+	renderTableForInstance(cid);
+}
 
-/* ====== Sort helper ====== */
+/* ====== Sort helper - IDENTIQUE ====== */
 function sortData(data, columnKey, direction) {
 	if (!direction) return data;
 	return [...data].sort((a, b) => {
 		let av = a[columnKey], bv = b[columnKey];
-		if (av == null) av = ''; if (bv == null) bv = '';
+		if (av == null) av = '';
+		if (bv == null) bv = '';
 		const low = columnKey.toLowerCase();
-		if (low.includes('indice') || low.includes('priorite')) { av = parseFloat(av) || 0; bv = parseFloat(bv) || 0; return direction === 'asc' ? av - bv : bv - av; }
-		if (low.includes('date') || low.includes('appel')) { const ad = moment(av), bd = moment(bv); if (ad.isValid() && bd.isValid()) return direction === 'asc' ? ad - bd : bd - ad; }
-		av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); return direction === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+		if (low.includes('indice') || low.includes('priorite')) {
+			av = parseFloat(av) || 0;
+			bv = parseFloat(bv) || 0;
+			return direction === 'asc' ? av - bv : bv - av;
+		}
+		if (low.includes('date') || low.includes('appel')) {
+			const ad = moment(av), bd = moment(bv);
+			if (ad.isValid() && bd.isValid()) return direction === 'asc' ? ad - bd : bd - ad;
+		}
+		av = String(av).toLowerCase();
+		bv = String(bv).toLowerCase();
+		return direction === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
 	});
 }
 
-/* ====== Badges ====== */
+/* ====== Badges - IDENTIQUE ====== */
 function getStatusBadge(status) {
 	if (!status) return `<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-800">${status || 'N/A'}</span>`;
 	const s = String(status).toLowerCase();
@@ -875,7 +1133,7 @@ function getStatusBadge(status) {
 	return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-800">${escapeAttr(status)}</span>`;
 }
 
-/* ====== Sample data (dev) ====== */
+/* ====== Sample data (dev) - IDENTIQUE ====== */
 function loadSampleDataForInstance(cid) {
 	const st = getInstanceState(cid);
 	st.currentPage = 1;
@@ -887,96 +1145,164 @@ function loadSampleDataForInstance(cid) {
 	const soc = ["", "SARL MARTIN", "EURL BERNARD", "SAS ROBERT", "SASU DUPONT", "SA THOMAS"];
 	const arr = [];
 	for (let i = 0; i < size; i++) {
-		const d = { ...base }; d.Indice = 217570 + i; d.Agent = agents[i % agents.length]; d.Statut = statuts[i % statuts.length];
-		d.contact_ville = villes[i % villes.length]; d["Nom société"] = soc[i % soc.length];
+		const d = { ...base };
+		d.Indice = 217570 + i;
+		d.Agent = agents[i % agents.length];
+		d.Statut = statuts[i % statuts.length];
+		d.contact_ville = villes[i % villes.length];
+		d["Nom société"] = soc[i % soc.length];
 		d["Date appel"] = `2024-06-${String(25 + (i % 5)).padStart(2, '0')} ${String(9 + (i % 12)).padStart(2, '0')}:${String(15 + (i % 45)).padStart(2, '0')}`;
-		d.PRIORITE = (i % 5) - 1; d.Commentaire = i % 3 === 0 ? "Client intéressé ".repeat(22).trim() : i % 3 === 1 ? "À rappeler" : "";
+		d.PRIORITE = (i % 5) - 1;
+		d.Commentaire = i % 3 === 0 ? "Client intéressé ".repeat(22).trim() : i % 3 === 1 ? "À rappeler" : "";
 		d["Tel port"] = i % 2 === 0 ? `06 ${String(10 + (i % 89)).padStart(2, '0')} ${String(10 + (i % 89)).padStart(2, '0')}` : "";
 		d.montant = i % 4 === 0 ? String((i + 1) * 1000) : "";
 		arr.push(d);
 	}
 	initializeColumnsForInstance(cid, arr, st.options || {});
-	generateDynamicFiltersForInstance(cid);
+	if (st.options && st.options.enableFilters !== false) generateDynamicFiltersForInstance(cid);
 	if (st.options && st.options.enableColumnToggle !== false) initializeColumnDropdownForInstance(cid);
-	st.currentData = arr; st.filteredData = [...st.currentData];
-	renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid);
+	st.currentData = arr;
+	st.filteredData = [...st.currentData];
+	renderTableForInstance(cid);
+	updatePaginationForInstance(cid);
+	updateResultsCountForInstance(cid);
 	afficheTableauChargementForInstance(cid, false);
-	$('#' + idp(cid, 'btn_fiche')).prop('disabled', true);
+
+	const btnFiche = document.getElementById(idp(cid, 'btn_fiche'));
+	if (btnFiche) btnFiche.disabled = true;
 }
 
-/* ====== JSON loader ====== */
+/* ====== JSON loader - CONVERTI VANILLA JS ====== */
 function loadDataFromJSONForInstance(cid, json) {
 	if (!Array.isArray(json)) { console.error('loadDataFromJSONForInstance expects array'); return; }
 	const st = getInstanceState(cid);
-	st.currentData = json; st.filteredData = [...st.currentData]; st.currentPage = 1;
+	st.currentData = json;
+	st.filteredData = [...st.currentData];
+	st.currentPage = 1;
 	initializeColumnsForInstance(cid, st.currentData, st.options || {});
-	generateDynamicFiltersForInstance(cid);
+	if (st.options && st.options.enableFilters !== false) generateDynamicFiltersForInstance(cid);
 	if (st.options && st.options.enableColumnToggle !== false) initializeColumnDropdownForInstance(cid);
-	renderTableForInstance(cid); updatePaginationForInstance(cid); updateResultsCountForInstance(cid);
+	renderTableForInstance(cid);
+	updatePaginationForInstance(cid);
+	updateResultsCountForInstance(cid);
 	afficheTableauChargementForInstance(cid, false);
-	$('#' + idp(cid, 'btn_fiche')).prop('disabled', true);
+
+	const btnFiche = document.getElementById(idp(cid, 'btn_fiche'));
+	if (btnFiche) btnFiche.disabled = true;
 }
 
-/* ====== Loading indicator ====== */
+/* ====== Loading indicator - CONVERTI VANILLA JS ====== */
 function afficheTableauChargementForInstance(cid, show) {
-	if (show) { $('#' + idp(cid, 'table_container')).hide(); $('#' + idp(cid, 'loading-spinner')).removeClass('hidden'); }
-	else { $('#' + idp(cid, 'table_container')).show(); $('#' + idp(cid, 'loading-spinner')).addClass('hidden'); }
+	const tableContainer = document.getElementById(idp(cid, 'table_container'));
+	const loadingSpinner = document.getElementById(idp(cid, 'loading-spinner'));
+
+	if (show) {
+		if (tableContainer) tableContainer.style.display = 'none';
+		if (loadingSpinner) loadingSpinner.classList.remove('hidden');
+	} else {
+		if (tableContainer) tableContainer.style.display = '';
+		if (loadingSpinner) loadingSpinner.classList.add('hidden');
+	}
 }
 
-/* ====== Export ====== */
+/* ====== Export - IDENTIQUE ====== */
 function exportCSVForInstance(cid) {
 	const st = getInstanceState(cid);
 	const cols = Object.keys(st.columnDefinitions).filter(k => st.visibleColumns[k]);
 	if (cols.length === 0) { alert('Aucune colonne visible à exporter'); return; }
 	const header = cols.map(k => `"${st.columnDefinitions[k].label.replace(/"/g, '""')}"`).join(',');
-	const rows = st.filteredData.map(row => cols.map(k => { const v = row[st.columnDefinitions[k].key]; return `"${(v == null ? '' : String(v)).replace(/"/g, '""')}"`; }).join(','));
+	const rows = st.filteredData.map(row => cols.map(k => {
+		const v = row[st.columnDefinitions[k].key];
+		return `"${(v == null ? '' : String(v)).replace(/"/g, '""')}"`;
+	}).join(','));
 	const csv = [header].concat(rows).join('\r\n');
-	const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob);
-	const a = document.createElement('a'); a.href = url; a.download = `${cid}_export.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+	const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = `${cid}_export.csv`;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
 }
+
 function exportExcelForInstance(cid) {
 	const st = getInstanceState(cid);
-	const cols = Object.keys(st.columnDefinitions).filter(k => st.visibleColumns[k]); if (cols.length === 0) { alert('Aucune colonne visible à exporter'); return; }
+	const cols = Object.keys(st.columnDefinitions).filter(k => st.visibleColumns[k]);
+	if (cols.length === 0) { alert('Aucune colonne visible à exporter'); return; }
 	const header = cols.map(k => st.columnDefinitions[k].label).join('\t');
 	const rows = st.filteredData.map(row => cols.map(k => row[st.columnDefinitions[k].key] ?? '').join('\t'));
 	const tsv = [header].concat(rows).join('\r\n');
-	const blob = new Blob([tsv], { type: 'application/vnd.ms-excel;charset=utf-8;' }); const url = URL.createObjectURL(blob);
-	const a = document.createElement('a'); a.href = url; a.download = `${cid}_export.xls`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+	const blob = new Blob([tsv], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = `${cid}_export.xls`;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
 }
 
-/* ====== Public API per instance ====== */
+/* ====== Public API per instance - IDENTIQUE ====== */
 function getPublicInstanceApi(cid) {
 	return {
-		updateData: (newData) => { initTableRechercheForInstance(Array.isArray(newData) ? newData : [newData], { ...(getInstanceState(cid).options || {}), containerId: cid }); },
+		updateData: (newData) => {
+			initTableRechercheForInstance(Array.isArray(newData) ? newData : [newData], {
+				...(getInstanceState(cid).options || {}),
+				containerId: cid
+			});
+		},
 		loadJSON: (json) => { loadDataFromJSONForInstance(cid, json); },
-		selectIndice: (indice) => { const st = getInstanceState(cid); st.selectedIndice = indice; if (window.GLOBAL) window.GLOBAL.indiceFiche = indice; updateSelectedRowsForInstance(cid); },
+		selectIndice: (indice) => {
+			const st = getInstanceState(cid);
+			st.selectedIndice = indice;
+			if (window.GLOBAL) window.GLOBAL.indiceFiche = indice;
+			updateSelectedRowsForInstance(cid);
+		},
 		getSelectedIndice: () => getInstanceState(cid).selectedIndice,
 		getLastTel: () => getInstanceState(cid).lastTel,
 		getState: () => getInstanceState(cid),
 		exportCSV: () => exportCSVForInstance(cid),
 		exportExcel: () => exportExcelForInstance(cid),
-		on: function (eventName, fn) { const st = getInstanceState(cid); st.callbacks[eventName] = fn; return this; }
+		on: function (eventName, fn) {
+			const st = getInstanceState(cid);
+			st.callbacks[eventName] = fn;
+			return this;
+		}
 	};
 }
 
-/* ====== createTable (entry) ====== */
+/* ====== createTable (entry) - COMPLETE ====== */
 function createTable(options = {}) {
 	if (!options.containerId) { console.error('createTable: options.containerId is required'); return; }
 	const cid = options.containerId;
 	const st = getInstanceState(cid);
 
+	// Default options with ALL supported options
 	options.theme = options.theme || 'default';
-	options.badgeColumns = options.badgeColumns || ['Statut'];
+	options.badgeColumns = options.badgeColumns || (options.badgeCounts ? options.badgeCounts : ['Statut']);
 	options.orderByColumns = options.orderByColumns !== false;
 	options.enablePageSizeSelector = options.enablePageSizeSelector !== false;
 	options.enableSearch = options.enableSearch !== false;
+	options.enableFilters = options.enableFilters !== false;
+	options.enableColumnToggle = options.enableColumnToggle !== false;
 	options.enableTooltip = options.enableTooltip !== false;
+	options.enableActionButton = options.enableActionButton !== false;
 	options.virtualizeThreshold = options.virtualizeThreshold || 1000;
 	options.legacyShim = options.hasOwnProperty('legacyShim') ? options.legacyShim : true;
 
-	st.options = options; st.currentPage = 1; st.itemsPerPage = options.itemsPerPageCount || st.itemsPerPage;
+	st.options = options;
+	st.currentPage = 1;
+	st.itemsPerPage = options.itemsPerPageCount || st.itemsPerPage;
+
 	if (options.colorPalette && Array.isArray(options.colorPalette) && options.colorPalette.length === 2) {
-		options.customPalette = { headerBg: options.colorPalette[0], buttonBg: options.colorPalette[1], buttonHover: generateHoverClass(options.colorPalette[1]) };
+		options.customPalette = {
+			headerBg: options.colorPalette[0],
+			buttonBg: options.colorPalette[1],
+			buttonHover: generateHoverClass(options.colorPalette[1])
+		};
 	}
 
 	afficheRechercheTableau(options);
@@ -988,10 +1314,12 @@ function createTable(options = {}) {
 	return api;
 }
 
-// expose globally
+// Expose globally
 window.createTable = createTable;
 window.libTableFimainfo = window.libTableFimainfo || {};
 window.libTableFimainfo.getInstanceState = getInstanceState;
 window.libTableFimainfo.createTable = createTable;
+
+console.log('✅ lib_table_fimainfo_smiro_vanilla.js COMPLET chargé avec succès');
 
 /* ====== END OF FILE ====== */
