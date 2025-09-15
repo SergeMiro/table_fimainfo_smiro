@@ -63,15 +63,44 @@ function getCurrentPalette(options) { if (options && options.customPalette) retu
 /* ====== Date formatting helper ====== */
 function formatDateValue(val) {
 	if (!val) return '';
-	const mm = moment(val);
-	if (!mm.isValid()) return String(val);
+
+	const originalStr = String(val);
 
 	// Проверяем, есть ли время в исходном значении
-	const originalStr = String(val);
 	const hasTime = originalStr.includes(':') || originalStr.includes('T') || /\d{2}:\d{2}/.test(originalStr);
 
 	// Проверяем, есть ли дата в исходном значении
 	const hasDate = originalStr.includes('-') || originalStr.includes('/') || /\d{4}/.test(originalStr);
+
+	// Если это не похоже на дату, возвращаем как есть
+	if (!hasDate && !hasTime) {
+		return originalStr;
+	}
+
+	let mm;
+
+	// Пробуем разные форматы для парсинга
+	if (originalStr.includes('/')) {
+		// Формат YYYY/MM/DD или DD/MM/YYYY
+		if (/^\d{4}\/\d{2}\/\d{2}/.test(originalStr)) {
+			mm = moment(originalStr, 'YYYY/MM/DD HH:mm');
+		} else if (/^\d{2}\/\d{2}\/\d{4}/.test(originalStr)) {
+			mm = moment(originalStr, 'DD/MM/YYYY HH:mm');
+		} else {
+			mm = moment(originalStr);
+		}
+	} else if (originalStr.includes('-')) {
+		// Формат YYYY-MM-DD
+		mm = moment(originalStr, 'YYYY-MM-DD HH:mm');
+	} else {
+		// Другие форматы
+		mm = moment(originalStr);
+	}
+
+	// Если парсинг не удался, возвращаем исходное значение
+	if (!mm.isValid()) {
+		return originalStr;
+	}
 
 	if (hasDate && hasTime) {
 		// Есть и дата и время - показываем в формате день/месяц/год час:минуты
@@ -84,7 +113,7 @@ function formatDateValue(val) {
 		return mm.format('HH:mm');
 	} else {
 		// Неопределенный формат - возвращаем как есть
-		return String(val);
+		return originalStr;
 	}
 }
 
