@@ -60,6 +60,47 @@ function escapeAttr(s) { if (s == null) return ''; return String(s).replace(/&/g
 function generateHoverClass(bg) { const m = (bg || '').match(/bg-(\w+)-(\d+)/); if (m) { const c = m[1], sh = +m[2]; return `hover:bg-${c}-${Math.min(900, sh + 100)}`; } return 'hover:bg-gray-700'; }
 function getCurrentPalette(options) { if (options && options.customPalette) return options.customPalette; return colorThemes[(options && options.theme) || 'default'] || colorThemes.default; }
 
+/* ====== Date formatting helper ====== */
+function formatDateValue(val) {
+	if (!val) return '';
+	const mm = moment(val);
+	if (!mm.isValid()) return String(val);
+
+	// Проверяем, есть ли время в исходном значении
+	const originalStr = String(val);
+	const hasTime = originalStr.includes(':') || originalStr.includes('T') || /\d{2}:\d{2}/.test(originalStr);
+
+	// Проверяем, есть ли дата в исходном значении
+	const hasDate = originalStr.includes('-') || originalStr.includes('/') || /\d{4}/.test(originalStr);
+
+	if (hasDate && hasTime) {
+		// Есть и дата и время - показываем в формате день/месяц/год час:минуты
+		return mm.format('DD/MM/YYYY HH:mm');
+	} else if (hasDate && !hasTime) {
+		// Только дата - показываем только дату
+		return mm.format('DD/MM/YYYY');
+	} else if (!hasDate && hasTime) {
+		// Только время - показываем только время
+		return mm.format('HH:mm');
+	} else {
+		// Неопределенный формат - возвращаем как есть
+		return String(val);
+	}
+}
+
+/* ====== Phone number detection helper ====== */
+function isPhoneNumber(value) {
+	if (!value) return false;
+	const str = String(value);
+	// Проверяем, содержит ли строка цифры и пробелы/тире, характерные для телефонных номеров
+	return /^[\d\s\-\.\+\(\)]{8,}$/.test(str) && /\d{2,}/.test(str);
+}
+
+function normalizePhoneForSearch(value) {
+	if (!value) return '';
+	return String(value).replace(/[\s\-\.\(\)]/g, '');
+}
+
 /* ====== Column detection with 'as' support - IDENTIQUE ====== */
 function generateColumnDefinitions(sqlData, options = {}) {
 	if (!sqlData || sqlData.length === 0) return { columns: {}, visibility: {} };
@@ -244,7 +285,7 @@ function initializeFloatingUITooltips() {
 	}
 }
 
-// Simple tooltip fallback - Design amélioré
+// Simple tooltip fallback
 function initializeSimpleTooltips() {
 	console.log('Initialisation des tooltips simples...');
 
@@ -256,12 +297,11 @@ function initializeSimpleTooltips() {
 	tooltip.id = 'simple-tooltip';
 	tooltip.className = [
 		'pointer-events-none select-none z-[9999] fixed',
-		'rounded-xl px-4 py-3 text-sm font-medium max-w-sm',
-		'bg-white/95 backdrop-blur-md text-gray-800 shadow-2xl border border-gray-200',
-		'opacity-0 transform scale-95 transition-all duration-300 ease-out',
+		'rounded-lg px-3 py-2 text-sm font-medium max-w-xs',
+		'bg-gray-900 text-white shadow-lg',
+		'opacity-0 transition-opacity duration-200',
 		'whitespace-normal break-words'
 	].join(' ');
-	tooltip.style.backdropFilter = 'blur(12px)';
 	document.body.appendChild(tooltip);
 
 	let currentElement = null;
@@ -271,29 +311,23 @@ function initializeSimpleTooltips() {
 		if (!content) return;
 
 		tooltip.textContent = content;
+		tooltip.style.opacity = '1';
 		tooltip.style.display = 'block';
-
-		// Animation d'entrée fluide
-		requestAnimationFrame(() => {
-			tooltip.style.opacity = '1';
-			tooltip.style.transform = 'scale(1)';
-		});
 
 		const rect = element.getBoundingClientRect();
 		const tooltipRect = tooltip.getBoundingClientRect();
 
-		let top = rect.top - tooltipRect.height - 12;
+		let top = rect.top - tooltipRect.height - 8;
 		let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
 
-		// Ajustements pour rester dans la fenêtre
-		if (top < 12) {
-			top = rect.bottom + 12;
+		if (top < 8) {
+			top = rect.bottom + 8;
 		}
-		if (left < 12) {
-			left = 12;
+		if (left < 8) {
+			left = 8;
 		}
-		if (left + tooltipRect.width > window.innerWidth - 12) {
-			left = window.innerWidth - tooltipRect.width - 12;
+		if (left + tooltipRect.width > window.innerWidth - 8) {
+			left = window.innerWidth - tooltipRect.width - 8;
 		}
 
 		tooltip.style.top = top + 'px';
@@ -302,12 +336,11 @@ function initializeSimpleTooltips() {
 
 	function hideTooltip() {
 		tooltip.style.opacity = '0';
-		tooltip.style.transform = 'scale(0.95)';
 		setTimeout(() => {
 			if (tooltip.style.opacity === '0') {
 				tooltip.style.display = 'none';
 			}
-		}, 300);
+		}, 200);
 		currentElement = null;
 	}
 
@@ -372,97 +405,107 @@ function afficheRechercheTableau(options = {}) {
 	const minWidth = (options.includedColumns && options.includedColumns.length ? options.includedColumns.length : 8) * 140;
 
 	container.insertAdjacentHTML('beforeend', `
-    <div class="bg-white rounded-xl shadow-2xl border border-gray-100 w-full mx-auto transform transition-all duration-300 hover:shadow-3xl">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 w-full mx-auto">
       <!-- Header -->
-      <div class="px-6 py-5 border-b border-gray-100 ${palette.headerBg} rounded-t-xl bg-gradient-to-r from-gray-50 to-blue-50">
+      <div class="px-4 py-4 border-b border-gray-200 ${palette.headerBg}">
         <div class="flex items-center justify-between">
           ${options.enableSearch !== false ? `
-            <div class="flex-1 max-w-md mr-6">
-              <div class="relative group">
-                <input type="text" id="${idp(cid, 'global_search')}" placeholder="Rechercher dans tous les champs affichés ..." class="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md">
-                <svg class="absolute left-3 top-3 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <div class="flex-1 max-w-md mr-4">
+              <div class="relative">
+                <input type="text" id="${idp(cid, 'global_search')}" placeholder="Rechercher dans tous les champs affichés ..." class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
               </div>
             </div>` : ''}
           ${options.enableColumnToggle !== false ? `
-            <div class="relative">
-              <button id="${idp(cid, 'columns_toggle')}" class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200 transform hover:scale-105">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z"/></svg>
-                Colonnes
-                <svg class="w-4 h-4 ml-2 transition-transform duration-200" id="${idp(cid, 'columns_toggle_icon')}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-              </button>
-              <div id="${idp(cid, 'columns_dropdown')}" class="hidden absolute right-0 mt-3 w-64 bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-gray-100 z-50 transform scale-95 opacity-0 transition-all duration-200">
-                <div class="py-3">
-                  <div id="${idp(cid, 'column_dropdown_title')}" class="px-5 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-50 bg-gray-25">Colonnes affichées</div>
-                  <div id="${idp(cid, 'column_checkboxes')}" class="py-2 max-h-64 overflow-y-auto custom-scrollbar"></div>
+            <div class="flex items-center space-x-2 gap-4">
+				   <div class="flex items-center space-x-2 ml-2">
+                <button id="${idp(cid, 'export_csv')}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer" data-tooltip="Exporter en CSV">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </button>
+                <button id="${idp(cid, 'export_xls')}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer" data-tooltip="Exporter en XLSX">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.414l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </button>
+              </div>
+              <div class="relative">
+                <button id="${idp(cid, 'columns_toggle')}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  <svg class="w-4 h-4 mr-1.5" fill="none" stroke-width="1.5" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495"></path>
+                  </svg>
+                  Colonnes
+                  <svg class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="${idp(cid, 'columns_dropdown')}" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <div class="py-2">
+                    <div id="${idp(cid, 'column_dropdown_title')}" class="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100">Colonnes affichées</div>
+                    <div id="${idp(cid, 'column_checkboxes')}" class="py-1"></div>
+                  </div>
                 </div>
               </div>
+
             </div>` : ''}
         </div>
+        <script>
+          // Initialiser les tooltips Floating UI après le rendu des boutons
+          setTimeout(() => {
+            ensureFloatingUITooltipsOnce();
+          }, 100);
+        </script>
       </div>
 
       <!-- Filters -->
       ${options.enableFilters !== false ? `
-      <div id="${idp(cid, 'filters_container')}" class="px-6 py-5 bg-gradient-to-r from-gray-25 to-blue-25 border-b border-gray-100">
-        <div id="${idp(cid, 'filters_grid')}" class="grid gap-4"></div>
+      <div id="${idp(cid, 'filters_container')}" class="px-4 py-4 bg-gray-50 border-b border-gray-200">
+        <div id="${idp(cid, 'filters_grid')}" class="grid gap-3"></div>
       </div>` : ''}
 
       <!-- Summary -->
-      <div class="px-6 py-4 bg-gradient-to-r from-white to-gray-25 border-b border-gray-100">
+      <div class="px-3 py-3 bg-gray-50 border-b border-gray-200">
         <div class="flex items-center justify-between">
-          <span id="${idp(cid, 'results_count')}" class="text-sm font-medium text-gray-700 bg-white/60 px-3 py-1.5 rounded-full shadow-sm">0 résultats sur 0</span>
-          <span id="${idp(cid, 'results_summary')}" class="text-sm font-medium text-blue-700 bg-blue-50/60 px-3 py-1.5 rounded-full shadow-sm">Affichage de 0 à 0 sur 0 résultats</span>
+          <span id="${idp(cid, 'results_count')}" class="text-sm text-gray-600">0 résultats sur 0</span>
+          <span id="${idp(cid, 'results_summary')}" class="text-sm text-blue-600">Affichage de 0 à 0 sur 0 résultats</span>
         </div>
       </div>
 
       <!-- Loading -->
-      <div id="${idp(cid, 'loading-spinner')}" class="hidden px-6 py-16">
-        <div class="flex flex-col justify-center items-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-100 border-t-blue-500 shadow-lg"></div>
-          <p class="mt-4 text-sm text-gray-500 font-medium">Chargement des données...</p>
-        </div>
-      </div>
+      <div id="${idp(cid, 'loading-spinner')}" class="hidden px-4 py-12"><div class="flex justify-center items-center"><div class="animate-spin rounded-lg h-8 w-8 border-b-2 border-blue-500"></div></div></div>
 
       <!-- Table -->
-      <div id="${idp(cid, 'table_container')}" class="overflow-hidden rounded-b-xl" style="max-height:520px;">
+      <div id="${idp(cid, 'table_container')}" class="overflow-x-auto" style="max-height:520px; scrollbar-width:thin; scrollbar-color:#cbd5e0 #f7fafc;">
         <style>
-          .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-          .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 8px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #cbd5e0, #a0aec0); border-radius: 8px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: linear-gradient(to bottom, #a0aec0, #718096); }
-          .table-row { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-          .table-row:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+          #${idp(cid, 'table_container')}::-webkit-scrollbar{height:6px;}
+          #${idp(cid, 'table_container')}::-webkit-scrollbar-track{background:#f7fafc;border-radius:3px;}
+          #${idp(cid, 'table_container')}::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px;}
+          #${idp(cid, 'table_container')}::-webkit-scrollbar-thumb:hover{background:#a0aec0;}
         </style>
-        <div class="overflow-auto custom-scrollbar" style="max-height:520px;">
-          <table style="width:100%; table-layout:fixed; min-width:${minWidth}px;" class="divide-y divide-gray-100">
-            <thead id="${idp(cid, 'table_head')}" class="bg-gradient-to-r from-gray-50 to-blue-50 sticky top-0 z-10"></thead>
-            <tbody id="${idp(cid, 'table_body')}" class="bg-white divide-y divide-gray-100"></tbody>
-          </table>
-        </div>
+        <table style="width:100%; table-layout:fixed; min-width:${minWidth}px;">
+          <thead id="${idp(cid, 'table_head')}" class="bg-gray-50"></thead>
+          <tbody id="${idp(cid, 'table_body')}" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
       </div>
 
       <!-- Pagination -->
-      <div class="px-6 py-5 bg-gradient-to-r from-gray-25 to-white border-t border-gray-100 rounded-b-xl">
+      <div class="px-4 py-4 bg-gray-50 border-t border-gray-200">
         <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-6">
+          <div class="flex items-center space-x-4">
             ${options.enablePageSizeSelector !== false ? `
-            <div class="flex items-center space-x-3">
-              <label for="${idp(cid, 'page_size_selector')}" class="text-sm font-medium text-gray-700">Éléments par page:</label>
+            <div class="flex items-center space-x-2">
+              <label for="${idp(cid, 'page_size_selector')}" class="text-sm text-gray-700">Éléments par page:</label>
               <div class="relative">
-                <select id="${idp(cid, 'page_size_selector')}" class="text-sm border border-gray-200 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 appearance-none bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200">
+                <select id="${idp(cid, 'page_size_selector')}" class="text-sm border border-gray-300 rounded px-2 py-1 pr-6 focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none">
                   ${[5, 10, 20, 50, 100].map(s => `<option value="${s}" ${state.itemsPerPage === s ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
-                <svg class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <svg class="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </div>
             </div>` : ''}
-            <div class="text-sm font-medium text-gray-700 bg-white/60 px-3 py-2 rounded-lg shadow-sm">Page <span id="${idp(cid, 'current_page')}" class="font-bold text-blue-600">1</span> sur <span id="${idp(cid, 'total_pages')}" class="font-bold text-blue-600">1</span></div>
+            <div class="text-sm text-gray-700">Page <span id="${idp(cid, 'current_page')}">1</span> sur <span id="${idp(cid, 'total_pages')}">1</span></div>
           </div>
-          <div class="flex items-center space-x-2">
-            <button id="${idp(cid, 'prev_page')}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg> Précédent
+          <div class="flex space-x-2">
+            <button id="${idp(cid, 'prev_page')}" class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg> Précédent
             </button>
-            <div id="${idp(cid, 'page_numbers')}" class="flex items-center space-x-1"></div>
-            <button id="${idp(cid, 'next_page')}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105">
-              Suivant <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <div id="${idp(cid, 'page_numbers')}" class="flex space-x-1"></div>
+            <button id="${idp(cid, 'next_page')}" class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              Suivant <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </button>
           </div>
         </div>
@@ -470,21 +513,11 @@ function afficheRechercheTableau(options = {}) {
 
       <!-- Actions -->
       ${options.enableActionButton !== false ? `
-      <div class="px-6 py-5 border-t border-gray-100 bg-gradient-to-r from-white to-gray-25 rounded-b-xl">
-        <div class="flex items-center space-x-4">
-          <button id="${idp(cid, 'btn_fiche')}" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 border border-transparent rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl" disabled>
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 616 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            Voir la fiche
-          </button>
-          <button id="${idp(cid, 'export_csv')}" class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200 transform hover:scale-105">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Export CSV
-          </button>
-          <button id="${idp(cid, 'export_xls')}" class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200 transform hover:scale-105">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Export Excel
-          </button>
-        </div>
+      <div class="px-4 py-4 border-t border-gray-200">
+        <button id="${idp(cid, 'btn_fiche')}" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white ${palette.buttonBg} border border-transparent rounded-md ${palette.buttonHover} disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          Voir la fiche
+        </button>
       </div>` : ''}
     </div>
   `);
@@ -558,41 +591,16 @@ function initializeTableEventListenersForInstance(cid) {
 		});
 	}
 
-	// Column toggle avec animations fluides
+	// Column toggle
 	if (columnsToggle && columnsDropdown) {
-		const toggleIcon = document.getElementById(idp(cid, 'columns_toggle_icon'));
-
 		columnsToggle.addEventListener('click', (e) => {
 			e.stopPropagation();
-			const isHidden = columnsDropdown.classList.contains('hidden');
-
-			if (isHidden) {
-				// Animation d'ouverture
-				columnsDropdown.classList.remove('hidden');
-				if (toggleIcon) toggleIcon.style.transform = 'rotate(180deg)';
-				requestAnimationFrame(() => {
-					columnsDropdown.style.opacity = '1';
-					columnsDropdown.style.transform = 'scale(1)';
-				});
-			} else {
-				// Animation de fermeture
-				if (toggleIcon) toggleIcon.style.transform = 'rotate(0deg)';
-				columnsDropdown.style.opacity = '0';
-				columnsDropdown.style.transform = 'scale(0.95)';
-				setTimeout(() => {
-					columnsDropdown.classList.add('hidden');
-				}, 200);
-			}
+			columnsDropdown.classList.toggle('hidden');
 		});
 
 		document.addEventListener('click', (e) => {
 			if (!e.target.closest(`#${idp(cid, 'columns_toggle')}, #${idp(cid, 'columns_dropdown')}`)) {
-				if (toggleIcon) toggleIcon.style.transform = 'rotate(0deg)';
-				columnsDropdown.style.opacity = '0';
-				columnsDropdown.style.transform = 'scale(0.95)';
-				setTimeout(() => {
-					columnsDropdown.classList.add('hidden');
-				}, 200);
+				columnsDropdown.classList.add('hidden');
 			}
 		});
 	}
@@ -655,6 +663,8 @@ function initializeColumnDropdownForInstance(cid) {
 	const state = getInstanceState(cid);
 	const checkboxContainer = document.getElementById(idp(cid, 'column_checkboxes'));
 	if (!checkboxContainer) return;
+
+	// Пересобираем список чекбоксов
 	checkboxContainer.innerHTML = '';
 
 	const sortedKeys = Object.keys(state.columnDefinitions).sort((a, b) => {
@@ -666,61 +676,45 @@ function initializeColumnDropdownForInstance(cid) {
 
 	sortedKeys.forEach((k) => {
 		const col = state.columnDefinitions[k];
-		const checked = state.visibleColumns[k] !== false ? 'checked' : '';
+		const checked = state.visibleColumns[k] !== false;
+
 		const labelEl = document.createElement('label');
-		labelEl.className = 'flex items-center px-5 py-3 hover:bg-gradient-to-r hover:from-blue-25 hover:to-blue-50 cursor-pointer transition-all duration-200 rounded-lg mx-2';
-		labelEl.innerHTML = `
-			<div class="relative mr-3">
-				<input type="checkbox" ${checked} class="sr-only" data-column="${k}">
-				<div class="checkbox-custom w-5 h-5 bg-white border-2 border-gray-300 rounded transition-all duration-200 hover:border-blue-400 ${checked ? 'bg-blue-500 border-blue-500' : ''}">
-					${checked ? '<svg class="w-3 h-3 text-white absolute top-0.5 left-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>' : ''}
-				</div>
-			</div>
-			<span class="text-sm font-medium text-gray-700 select-none">${col.label}</span>
-		`;
+		labelEl.className = 'flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer';
+
+		const input = document.createElement('input');
+		input.type = 'checkbox';
+		input.className = 'mr-3';
+		input.dataset.column = k;
+		input.checked = checked;
+
+		const span = document.createElement('span');
+		span.className = 'text-sm text-gray-700';
+		span.textContent = col.label;
+
+		labelEl.appendChild(input);
+		labelEl.appendChild(span);
 		checkboxContainer.appendChild(labelEl);
 	});
 
+	// Заголовок дропа (AFFICHER TOUTES LES COLONNES / Colonnes affichées)
 	updateColumnDropdownTitleForInstance(cid);
 
-	// Gestion des checkboxes avec animations
-	checkboxContainer.addEventListener('click', function (e) {
-		const label = e.target.closest('label');
-		if (!label) return;
+	if (!checkboxContainer.__bound) {
+		checkboxContainer.addEventListener('change', (e) => {
+			const cb = e.target.closest('input[type="checkbox"][data-column]');
+			if (!cb) return;
 
-		const checkbox = label.querySelector('input[type="checkbox"]');
-		const checkboxCustom = label.querySelector('.checkbox-custom');
-		if (!checkbox || !checkboxCustom) return;
-
-		e.preventDefault();
-
-		const k = checkbox.dataset.column;
-		const newValue = !checkbox.checked;
-
-		// Animation de transition
-		checkboxCustom.style.transform = 'scale(0.9)';
-
-		setTimeout(() => {
-			checkbox.checked = newValue;
-			state.visibleColumns[k] = newValue;
-
-			// Mise à jour visuelle du checkbox
-			if (newValue) {
-				checkboxCustom.className = 'checkbox-custom w-5 h-5 bg-blue-500 border-2 border-blue-500 rounded transition-all duration-200 hover:border-blue-400';
-				checkboxCustom.innerHTML = '<svg class="w-3 h-3 text-white absolute top-0.5 left-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>';
-			} else {
-				checkboxCustom.className = 'checkbox-custom w-5 h-5 bg-white border-2 border-gray-300 rounded transition-all duration-200 hover:border-blue-400';
-				checkboxCustom.innerHTML = '';
-			}
-
-			checkboxCustom.style.transform = 'scale(1)';
+			const k = cb.dataset.column;
+			state.visibleColumns[k] = cb.checked;
 
 			persistSettings(cid, state);
 			updateColumnDropdownTitleForInstance(cid);
 			renderTableForInstance(cid);
-		}, 100);
-	});
+		});
+		checkboxContainer.__bound = true;
+	}
 }
+
 
 function updateColumnDropdownTitleForInstance(cid) {
 	const state = getInstanceState(cid);
@@ -773,8 +767,8 @@ function generateDynamicFiltersForInstance(cid) {
 		const div = document.createElement('div');
 		div.className = 'relative';
 		div.innerHTML = `
-      <input type="text" id="${fid}" placeholder="${escapeAttr(col.label)}" class="pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm w-full focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md">
-      <svg class="absolute left-3 top-3 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" id="${fid}" placeholder="${escapeAttr(col.label)}" class="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+      <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
     `;
 		grid.appendChild(div);
 	});
@@ -882,14 +876,32 @@ function renderTableForInstance(cid) {
 	keysSorted.forEach((k) => {
 		if (!st.visibleColumns[k]) return;
 		const col = st.columnDefinitions[k];
-		const sortDir = st.sortState[k];
+		const sortDirection = st.sortState[k];
 		let sortIcon = '';
-		if (options.orderByColumns !== false) {
-			if (sortDir === 'asc') sortIcon = '<svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>';
-			else if (sortDir === 'desc') sortIcon = '<svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-			else sortIcon = '<svg class="w-4 h-4 ml-1 inline opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>';
+		let cursorClass = '';
+
+		if (options.orderByColumns) {
+			cursorClass = 'cursor-pointer hover:bg-gray-100 transition-colors duration-150';
+			if (sortDirection === 'asc') {
+				// ASC
+				sortIcon = '<svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>';
+			} else if (sortDirection === 'desc') {
+				// DESC
+				sortIcon = '<svg class="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+			} else {
+				// default
+				sortIcon = '<svg class="w-4 h-4 ml-1 inline opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>';
+			}
 		}
-		headerHtml += `<th class="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer bg-gradient-to-r from-gray-50 to-blue-50 hover:from-blue-50 hover:to-blue-100 transition-all duration-200 border-r border-gray-100 last:border-r-0" style="width:${widthPercent}" data-column="${k}"><div class="flex items-center justify-between group"><span class="column-title group-hover:text-blue-700 transition-colors duration-200">${escapeAttr(col.label)}</span><span class="sort-icon group-hover:text-blue-600 transition-colors duration-200">${sortIcon}</span></div></th>`;
+
+		headerHtml += `
+		     <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] ${cursorClass}" style="width: ${widthPercent};" data-column="${k}">
+		       <div class="flex items-center justify-between">
+		         <span class="column-title">${escapeAttr(col.label)}</span>
+		         ${sortIcon}
+		       </div>
+		     </th>
+		   `;
 	});
 	headerHtml += '</tr>';
 
@@ -901,26 +913,70 @@ function renderTableForInstance(cid) {
 	if (!tbody) return;
 	tbody.innerHTML = '';
 
-	pageData.forEach((row, idx) => {
-		tbody.insertAdjacentHTML('beforeend', buildRowHtmlForInstance(cid, row, idx + startIndex));
+	pageData.forEach((row, index) => {
+		const indiceKey = Object.keys(row).find((k) => k.toLowerCase().includes('indice')) || Object.keys(row)[0];
+		const indiceValue = row[indiceKey];
+		const isSelected = st.selectedIndice && st.selectedIndice == indiceValue;
+
+		let rowHtml = `<tr class="cursor-pointer table-row border-b border-gray-100 ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50'}" data-index="${startIndex + index}" data-indice="${indiceValue}">`;
+
+		keysSorted.forEach((k) => {
+			if (!st.visibleColumns[k]) return;
+
+			const col = st.columnDefinitions[k];
+			let cellValue = row[col.key] || '';
+
+			if (col.key.toLowerCase().includes('tel') && cellValue) {
+				cellValue = cellValue.toString().replace(/\s/g, '');
+			}
+
+			// Форматирование дат
+			if ((col.key.toLowerCase().includes('date') || col.key.toLowerCase().includes('appel')) && cellValue) {
+				cellValue = formatDateValue(cellValue);
+			}
+
+			if (st.options && (st.options.badgeColumns || st.options.badgeCounts) &&
+				(st.options.badgeColumns || st.options.badgeCounts || []).some(b => col.key.toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(col.key.toLowerCase()))) {
+				rowHtml += `<td class="px-3 py-3 whitespace-nowrap">${getStatusBadge(cellValue)}</td>`;
+			} else {
+				const fw = col.key.toLowerCase().includes('indice') ? 'font-medium' : '';
+				const strVal = String(cellValue);
+
+				let isLong = false;
+				let needsTruncate = false;
+
+				if (strVal && strVal.length > 0) {
+					isLong = strVal.length > 20;
+					if (col.key.toLowerCase().includes('comment') || col.key.toLowerCase().includes('detail')) {
+						needsTruncate = strVal.length > 15;
+						isLong = strVal.length > 10;
+					} else {
+						needsTruncate = isLong;
+					}
+				}
+
+				const trunc = needsTruncate ? 'truncate' : '';
+				const tt = isLong && st.options && st.options.enableTooltip !== false ? ` data-tooltip="${escapeAttr(strVal)}"` : '';
+				rowHtml += `<td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900 ${fw} ${trunc}"${tt}>${escapeAttr(strVal)}</td>`;
+			}
+		});
+		rowHtml += '</tr>';
+		tbody.insertAdjacentHTML('beforeend', rowHtml);
 	});
 
 	// Row handlers with vanilla JS
 	const container = document.getElementById(cid);
 	if (container) {
-		// Click handler with event delegation
-		container.addEventListener('click', function (event) {
+		container.onclick = function (event) {
 			const clickedRow = event.target.closest('.table-row');
 			if (!clickedRow) return;
 
-			// Remove selection from all rows
 			const allRows = container.querySelectorAll('.table-row');
 			allRows.forEach(row => {
 				row.classList.remove('bg-blue-50');
 				row.classList.add('hover:bg-gray-50');
 			});
 
-			// Select current row
 			clickedRow.classList.remove('hover:bg-gray-50');
 			clickedRow.classList.add('bg-blue-50');
 
@@ -928,54 +984,49 @@ function renderTableForInstance(cid) {
 			st.selectedIndice = indice;
 			if (window.GLOBAL) window.GLOBAL.indiceFiche = indice;
 			updateSelectedRowsForInstance(cid);
-			try {
-				if (typeof st.callbacks.onRowSelect === 'function')
-					st.callbacks.onRowSelect(getPublicInstanceApi(cid), indice);
-			} catch (e) { }
-		});
 
-		// Double click handler
-		container.addEventListener('dblclick', function (event) {
+			try { st.callbacks.onRowSelect?.(getPublicInstanceApi(cid), indice); } catch { }
+		};
+
+		container.ondblclick = function (event) {
 			const clickedRow = event.target.closest('.table-row');
 			if (!clickedRow) return;
-
 			const indice = clickedRow.dataset.indice;
-			try {
-				if (typeof st.callbacks.onRowDblClick === 'function')
-					st.callbacks.onRowDblClick(getPublicInstanceApi(cid), indice);
-			} catch (e) { }
-		});
+			try { st.callbacks.onRowDblClick?.(getPublicInstanceApi(cid), indice); } catch { }
+		};
 	}
+
 
 	if (options.enableColumnToggle !== false) initializeColumnDropdownForInstance(cid);
 
 	if (options.orderByColumns !== false && thead) {
-		thead.addEventListener('click', function (event) {
+		thead.onclick = function (event) {
 			const clickedTh = event.target.closest('th[data-column]');
 			if (!clickedTh) return;
 
-			event.preventDefault();
 			const k = clickedTh.dataset.column;
 			const col = st.columnDefinitions[k];
 			if (!col) return;
 
 			const current = st.sortState[k];
 			const next = current === 'asc' ? 'desc' : current === 'desc' ? null : 'asc';
+
 			Object.keys(st.sortState).forEach(x => st.sortState[x] = null);
 			st.sortState[k] = next;
 
-			if (next) st.filteredData = sortData(st.filteredData, col.key, next);
-			else {
+			if (next) {
+				st.filteredData = sortData(st.filteredData, col.key, next);
+				st.currentPage = 1;
+				renderTableForInstance(cid);
+				updatePaginationForInstance(cid);
+				updateResultsCountForInstance(cid);
+			} else {
 				st.filteredData = [...st.currentData];
 				applyFiltersForInstance(cid);
-				return;
 			}
-			st.currentPage = 1;
-			renderTableForInstance(cid);
-			updatePaginationForInstance(cid);
-			updateResultsCountForInstance(cid);
-		});
+		};
 	}
+
 
 	if (typeof st.callbacks.onRenderComplete === 'function') {
 		try { st.callbacks.onRenderComplete(getPublicInstanceApi(cid)); } catch (e) { }
@@ -995,20 +1046,20 @@ function buildRowHtmlForInstance(cid, row, absoluteIndex) {
 	const indiceValue = row[indiceKey];
 	const isSelected = st.selectedIndice && st.selectedIndice == indiceValue;
 
-	let html = `<tr class="cursor-pointer table-row border-b border-gray-50 transition-all duration-200 ease-out hover:bg-gradient-to-r hover:from-blue-25 hover:to-blue-50 hover:shadow-lg hover:border-blue-200 ${isSelected ? 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 shadow-md' : ''}" data-index="${absoluteIndex}" data-indice="${escapeAttr(indiceValue)}">`;
+	let html = `<tr class="cursor-pointer table-row border-b border-gray-100 ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50'}" data-index="${absoluteIndex}" data-indice="${escapeAttr(indiceValue)}">`;
 	keysSorted.forEach((k) => {
 		if (!st.visibleColumns[k]) return;
 		const col = st.columnDefinitions[k];
 		let val = row[col.key] ?? '';
 		if (col.key.toLowerCase().includes('tel') && val) val = String(val).replace(/\s/g, '');
 		if ((col.key.toLowerCase().includes('date') || col.key.toLowerCase().includes('appel')) && val) {
-			const mm = moment(val); if (mm.isValid()) val = mm.format('DD/MM/YYYY HH:mm');
+			val = formatDateValue(val);
 		}
 		if (st.options && (st.options.badgeColumns || st.options.badgeCounts) &&
 			(st.options.badgeColumns || st.options.badgeCounts || []).some(b => col.key.toLowerCase().includes(String(b).toLowerCase()) || String(b).toLowerCase().includes(col.key.toLowerCase()))) {
-			html += `<td class="px-4 py-4 whitespace-nowrap border-r border-gray-50 last:border-r-0">${getStatusBadge(val)}</td>`;
+			html += `<td class="px-3 py-3 whitespace-nowrap">${getStatusBadge(val)}</td>`;
 		} else {
-			const fw = col.key.toLowerCase().includes('indice') ? 'font-semibold text-blue-700' : 'font-medium';
+			const fw = col.key.toLowerCase().includes('indice') ? 'font-medium' : '';
 			const strVal = String(val);
 
 			let isLong = false;
@@ -1026,7 +1077,7 @@ function buildRowHtmlForInstance(cid, row, absoluteIndex) {
 
 			const trunc = needsTruncate ? 'truncate' : '';
 			const tt = isLong && st.options && st.options.enableTooltip !== false ? ` data-tooltip="${escapeAttr(strVal)}"` : '';
-			html += `<td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800 ${fw} ${trunc} border-r border-gray-50 last:border-r-0 group-hover:text-gray-900 transition-colors duration-200"${tt}>${escapeAttr(strVal)}</td>`;
+			html += `<td class="px-3 py-3 whitespace-nowrap text-sm text-gray-900 ${fw} ${trunc}"${tt}>${escapeAttr(strVal)}</td>`;
 		}
 	});
 	html += '</tr>';
@@ -1049,9 +1100,21 @@ function applyFiltersForInstance(cid) {
 		const fm = Object.keys(filters).every(k => {
 			const col = st.columnDefinitions[k];
 			const fv = filters[k];
-			const rv = row[col.key];
+			let rv = row[col.key];
 			if (!rv) return false;
-			if (col.key.toLowerCase().includes('tel')) return String(rv).replace(/\s/g, '').toLowerCase().includes(fv.replace(/\s/g, ''));
+
+			// Применяем форматирование для поиска
+			// Проверяем телефонные номера (как по названию колонки, так и по содержимому)
+			if ((col.key.toLowerCase().includes('tel') || isPhoneNumber(rv)) && rv) {
+				const normalizedValue = normalizePhoneForSearch(rv);
+				const normalizedFilter = normalizePhoneForSearch(fv);
+				return normalizedValue.toLowerCase().includes(normalizedFilter.toLowerCase());
+			}
+			if ((col.key.toLowerCase().includes('date') || col.key.toLowerCase().includes('appel')) && rv) {
+				const formattedDate = formatDateValue(rv);
+				// Ищем как в исходном значении, так и в отформатированном
+				return String(rv).toLowerCase().includes(fv) || formattedDate.toLowerCase().includes(fv);
+			}
 			return String(rv).toLowerCase().includes(fv);
 		});
 
@@ -1061,9 +1124,21 @@ function applyFiltersForInstance(cid) {
 			const gm = Object.keys(st.columnDefinitions).some(k => {
 				if (!st.visibleColumns[k]) return false;
 				const col = st.columnDefinitions[k];
-				const rv = row[col.key];
+				let rv = row[col.key];
 				if (!rv) return false;
-				if (col.key.toLowerCase().includes('tel')) return String(rv).replace(/\s/g, '').toLowerCase().includes(gsv.replace(/\s/g, ''));
+
+				// Применяем форматирование для глобального поиска
+				// Проверяем телефонные номера (как по названию колонки, так и по содержимому)
+				if ((col.key.toLowerCase().includes('tel') || isPhoneNumber(rv)) && rv) {
+					const normalizedValue = normalizePhoneForSearch(rv);
+					const normalizedSearch = normalizePhoneForSearch(gsv);
+					return normalizedValue.toLowerCase().includes(normalizedSearch.toLowerCase());
+				}
+				if ((col.key.toLowerCase().includes('date') || col.key.toLowerCase().includes('appel')) && rv) {
+					const formattedDate = formatDateValue(rv);
+					// Ищем как в исходном значении, так и в отформатированном
+					return String(rv).toLowerCase().includes(gsv) || formattedDate.toLowerCase().includes(gsv);
+				}
 				return String(rv).toLowerCase().includes(gsv);
 			});
 			return fm && gm;
@@ -1113,12 +1188,12 @@ function updatePaginationForInstance(cid) {
 			nums.appendChild(span);
 		} else if (active) {
 			const btn = document.createElement('button');
-			btn.className = 'px-3 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md border border-blue-600 transform scale-105';
+			btn.className = `px-2 py-1 text-xs text-white ${getCurrentPalette(st.options).buttonBg} rounded`;
 			btn.textContent = p;
 			nums.appendChild(btn);
 		} else {
 			const btn = document.createElement('button');
-			btn.className = 'px-3 py-2 text-sm font-medium page-btn border border-gray-200 rounded-lg hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:border-blue-300 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md bg-white/80 backdrop-blur-sm';
+			btn.className = 'px-2 py-1 text-xs page-btn border border-gray-300 rounded hover:bg-gray-50';
 			btn.dataset.page = p;
 			btn.textContent = p;
 			btn.addEventListener('click', function () {
@@ -1181,42 +1256,67 @@ function virtualOnScrollHandler(cid) {
 	renderTableForInstance(cid);
 }
 
-/* ====== Sort helper - IDENTIQUE ====== */
+/* ====== Sort helper - FIXED VERSION ====== */
 function sortData(data, columnKey, direction) {
 	if (!direction) return data;
+
 	return [...data].sort((a, b) => {
-		let av = a[columnKey], bv = b[columnKey];
-		if (av == null) av = '';
-		if (bv == null) bv = '';
-		const low = columnKey.toLowerCase();
-		if (low.includes('indice') || low.includes('priorite')) {
-			av = parseFloat(av) || 0;
-			bv = parseFloat(bv) || 0;
-			return direction === 'asc' ? av - bv : bv - av;
+		let aVal = a[columnKey];
+		let bVal = b[columnKey];
+
+		// Gérer les valeurs nulles ou undefined
+		if (aVal == null) aVal = '';
+		if (bVal == null) bVal = '';
+
+		// Pour les colonnes numériques (comme Indice), trier numériquement
+		if (columnKey.toLowerCase().includes('indice') || columnKey.toLowerCase().includes('priorite')) {
+			aVal = parseFloat(aVal) || 0;
+			bVal = parseFloat(bVal) || 0;
+			if (direction === 'asc') {
+				return aVal - bVal;
+			} else {
+				return bVal - aVal;
+			}
 		}
-		if (low.includes('date') || low.includes('appel')) {
-			const ad = moment(av), bd = moment(bv);
-			if (ad.isValid() && bd.isValid()) return direction === 'asc' ? ad - bd : bd - ad;
+
+		// Pour les dates, trier chronologiquement
+		if (columnKey.toLowerCase().includes('date') || columnKey.toLowerCase().includes('appel')) {
+			const aDate = moment(aVal);
+			const bDate = moment(bVal);
+			if (aDate.isValid() && bDate.isValid()) {
+				if (direction === 'asc') {
+					return aDate - bDate;
+				} else {
+					return bDate - aDate;
+				}
+			}
 		}
-		av = String(av).toLowerCase();
-		bv = String(bv).toLowerCase();
-		return direction === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+
+		// Sinon, trier comme des chaînes de caractères
+		aVal = String(aVal).toLowerCase();
+		bVal = String(bVal).toLowerCase();
+
+		if (direction === 'asc') {
+			return aVal.localeCompare(bVal);
+		} else {
+			return bVal.localeCompare(aVal);
+		}
 	});
 }
 
-/* ====== Badges - Design Amélioré ====== */
+/* ====== Badges - IDENTIQUE ====== */
 function getStatusBadge(status) {
-	if (!status) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md transform hover:scale-105">${status || 'N/A'}</span>`;
+	if (!status) return `<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-800">${status || 'N/A'}</span>`;
 	const s = String(status).toLowerCase();
-	if (s.includes('rappel')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 shadow-sm border border-yellow-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('rdv')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-sm border border-blue-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('relance')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 shadow-sm border border-purple-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('absent') || s.includes('non répondu')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-100 to-red-200 text-red-800 shadow-sm border border-red-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('refus') || s.includes('négatif')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 shadow-sm border border-orange-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('positif') || s.includes('accepté') || s.includes('validé')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-green-100 to-green-200 text-green-800 shadow-sm border border-green-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('en cours') || s.includes('traitement')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-cyan-100 to-cyan-200 text-cyan-800 shadow-sm border border-cyan-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	if (s.includes('urgent') || s.includes('priorité')) return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-pink-100 to-pink-200 text-pink-800 shadow-sm border border-pink-300 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
-	return `<span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md transform hover:scale-105">${escapeAttr(status)}</span>`;
+	if (s.includes('rappel')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-800">${escapeAttr(status)}</span>`;
+	if (s.includes('rdv')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-800">${escapeAttr(status)}</span>`;
+	if (s.includes('relance')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-purple-100 text-purple-800">${escapeAttr(status)}</span>`;
+	if (s.includes('absent') || s.includes('non répondu')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-red-100 text-red-800">${escapeAttr(status)}</span>`;
+	if (s.includes('refus') || s.includes('négatif')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-orange-100 text-orange-800">${escapeAttr(status)}</span>`;
+	if (s.includes('positif') || s.includes('accepté') || s.includes('validé')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-green-100 text-green-800">${escapeAttr(status)}</span>`;
+	if (s.includes('en cours') || s.includes('traitement')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-cyan-100 text-cyan-800">${escapeAttr(status)}</span>`;
+	if (s.includes('urgent') || s.includes('priorité')) return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-pink-100 text-pink-800">${escapeAttr(status)}</span>`;
+	return `<span class="px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-800">${escapeAttr(status)}</span>`;
 }
 
 /* ====== Sample data (dev) - IDENTIQUE ====== */
