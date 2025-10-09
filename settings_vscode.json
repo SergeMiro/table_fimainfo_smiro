@@ -1,0 +1,327 @@
+{
+  "workbench.colorTheme": "Atom One Dark",
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "workbench.iconTheme": "vscode-icons",
+  "liveServer.settings.donotShowInfoMsg": true,
+  "liveServer.settings.donotVerifyTags": true,
+  "editor.linkedEditing": true,
+  "bracket-pair-colorizer-2.depreciation-notice": false,
+
+  "editor.tabSize": 3,
+  "editor.insertSpaces": false,
+  "editor.detectIndentation": false,
+  "editor.mouseWheelZoom": true,
+  "workbench.editor.closeEmptyGroups": false,
+
+  "liveSassCompile.settings.generateMap": false,
+  "liveSassCompile.settings.formats": [
+    {
+      "format": "expanded",
+      "autoprefix": "last 5 versions",
+      "extensionName": ".css",
+      "savePath": "css"
+    }
+  ],
+
+  "vscodeGoogleTranslate.preferredLanguage": "English",
+  "bracketPairColorizer.depreciation-notice": false,
+
+  "settingsSync.ignoredSettings": [
+    "projectManager.git.baseFolders",
+    "phpserver.browser",
+    "-php.validate.executablePath"
+  ],
+  "vsicons.dontShowNewVersionMessage": true,
+  "redhat.telemetry.enabled": true,
+  "editor.accessibilitySupport": "off",
+  "security.workspace.trust.untrustedFiles": "open",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "terminal.integrated.defaultProfile.windows": "Git Bash",
+
+  "path-autocomplete.pathMappings": {
+    "@img": "${folder}/src/img",
+    "@scss": "${folder}/src/scss",
+    "@css": "${folder}/src/css",
+    "@js": "${folder}/src/js"
+  },
+
+  "sync.gist": "f4de236969f2c89ac8396e5e00db904b",
+  "git.autofetch": true,
+
+  "intelephense.phpdoc.classTemplate": {
+    "summary": "$1",
+    "tags": ["@package ${1:$SYMBOL_NAMESPACE}"]
+  },
+  "intelephense.phpdoc.functionTemplate": {
+    "summary": "$1",
+    "tags": [
+      "@param ${1:$SYMBOL_TYPE} $SYMBOL_NAME $2",
+      "@return ${1:$SYMBOL_TYPE} $2",
+      "@throws ${1:$SYMBOL_TYPE} $2"
+    ]
+  },
+  "phpserver.phpPath": "",
+  "phpserver.phpConfigPath": "",
+  "intelephense.phpdoc.propertyTemplate": {
+    "summary": "$1",
+    "tags": ["@var ${1:$SYMBOL_TYPE}"]
+  },
+
+  "settingsSync.ignoredExtensions": [],
+  "aws.telemetry": false,
+
+  "yaml.customTags": [
+    "!And",
+    "!And sequence",
+    "!If",
+    "!If sequence",
+    "!Not",
+    "!Not sequence",
+    "!Equals",
+    "!Equals sequence",
+    "!Or",
+    "!Or sequence",
+    "!FindInMap",
+    "!FindInMap sequence",
+    "!Base64",
+    "!Join",
+    "!Join sequence",
+    "!Cidr",
+    "!Ref",
+    "!Sub",
+    "!Sub sequence",
+    "!GetAtt",
+    "!GetAZs",
+    "!ImportValue",
+    "!ImportValue sequence",
+    "!Select",
+    "!Select sequence",
+    "!Split",
+    "!Split sequence"
+  ],
+
+  "editor.guides.indentation": false,
+  "workbench.colorCustomizations": {
+    "editorIndentGuide.activeBackground": "#b1afaf"
+  },
+
+  "files.associations": {
+    "*.css": "css",
+    "*.js": "javascript",
+    "*.jsx": "javascriptreact",
+    "*.tsx": "typescriptreact"
+  },
+
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "javascriptreact": "html"
+  },
+  "emmet.triggerExpansionOnTab": true,
+  "emmet.syntaxProfiles": {
+    "javascript": "jsx",
+    "javascriptreact": "jsx"
+  },
+
+  "auto-rename-tag.activationOnLanguage": [
+    "html",
+    "xml",
+    "php",
+    "javascript",
+    "javascriptreact",
+    "typescriptreact"
+  ],
+
+  "editor.formatOnType": true,
+  "ecsstractor_port.comment_style": "css",
+
+  "codeium.enableConfig": {
+    "*": true,
+    "plaintext": true,
+    "javascript": true,
+    "javascriptreact": true,
+    "typescript": true,
+    "typescriptreact": true,
+    "tailwindcss": true
+  },
+  "codeium.enableInComments": true,
+  "codeium.disableSupercomplete": false,
+  "codeium.enableSearch": true,
+
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": true,
+    "strings": true
+  },
+
+  "amazonQ.telemetry": false,
+  "workbench.editorAssociations": {
+    "{git,gitlens,conflictResolution,vscode-local-history}:/**/*.tc.json": "default",
+    "{git,gitlens,conflictResolution,vscode-local-history}:/**/*.{asl.json,asl.yaml,asl.yml}": "default",
+    "*.ttf": "ttf.preview"
+  },
+  "editor.unicodeHighlight.invisibleCharacters": false,
+  "editor.unicodeHighlight.ambiguousCharacters": false,
+  "tabnine.experimentalAutoImports": true,
+  "editor.minimap.showSlider": "always",
+  "editor.minimap.size": "fill",
+
+  "yaml.schemas": {
+    "c:\\Users\\pc\\.vscode\\extensions\\continue.continue-1.0.7-win32-x64\\config-yaml-schema.json": [
+      ".continue/**/*.yaml"
+    ],
+    "c:\\Users\\mirocs\\.vscode\\extensions\\continue.continue-1.0.15-win32-x64\\config-yaml-schema.json": [
+      ".continue/**/*.yaml"
+    ],
+    "/home/codespace/.vscode-remote/extensions/continue.continue-1.0.15-linux-x64/config-yaml-schema.json": [
+      ".continue/**/*.yaml"
+    ]
+  },
+
+  "roo-cline.allowedCommands": [
+    "npm test",
+    "npm install",
+    "tsc",
+    "git log",
+    "git diff",
+    "git show"
+  ],
+  "git.confirmSync": false,
+
+  "mssql.connectionGroups": [
+    { "name": "ROOT", "id": "B5420D82-EF82-4EC4-AF68-BFF35DCF3DE9" },
+    {
+      "name": "FIMAINFO db",
+      "color": "#566AA8",
+      "id": "A6297715-F2AE-4CCF-A048-68BD824D2050",
+      "parentId": "B5420D82-EF82-4EC4-AF68-BFF35DCF3DE9"
+    }
+  ],
+
+  "github.copilot.enable": {
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
+    "javascript": false
+  },
+
+  "kilo-code.allowedCommands": [
+    "npm test",
+    "npm install",
+    "tsc",
+    "git log",
+    "git diff",
+    "git show",
+    "*"
+  ],
+  "kilo-code.deniedCommands": [],
+
+  "mssql.connections": [
+    {
+      "authenticationType": "Integrated",
+      "connectTimeout": 30,
+      "applicationName": "vscode-mssql",
+      "applicationIntent": "ReadWrite",
+      "profileName": "192.168.9.113",
+      "groupId": "A6297715-F2AE-4CCF-A048-68BD824D2050",
+      "server": "192.168.9.113",
+      "encrypt": "Optional",
+      "id": "A39D511A-C5CE-48F7-B2E2-37EFAE8F2B37",
+      "database": "",
+      "commandTimeout": 30,
+      "profileSource": 0,
+      "user": "",
+      "password": ""
+    },
+    {
+      "authenticationType": "Integrated",
+      "connectTimeout": 30,
+      "applicationName": "vscode-mssql",
+      "applicationIntent": "ReadWrite",
+      "groupId": "A6297715-F2AE-4CCF-A048-68BD824D2050",
+      "profileName": "192.168.9.228",
+      "server": "192.168.9.228",
+      "encrypt": "Optional",
+      "id": "86166972-B397-4130-9861-DBD09F0D7074",
+      "database": "",
+      "commandTimeout": 30,
+      "profileSource": 0,
+      "user": "",
+      "password": ""
+    },
+    {
+      "authenticationType": "Integrated",
+      "connectTimeout": 30,
+      "applicationName": "vscode-mssql",
+      "applicationIntent": "ReadWrite",
+      "groupId": "A6297715-F2AE-4CCF-A048-68BD824D2050",
+      "server": "192.168.9.236",
+      "profileName": "CRCDIJSQL2 - 192.168.9.236",
+      "database": "",
+      "encrypt": "Optional",
+      "id": "790ECB78-FA14-48F4-BED9-01472984677C",
+      "commandTimeout": 30,
+      "profileSource": 0,
+      "user": "",
+      "password": ""
+    },
+    {
+      "authenticationType": "Integrated",
+      "connectTimeout": 30,
+      "applicationName": "vscode-mssql",
+      "applicationIntent": "ReadWrite",
+      "groupId": "A6297715-F2AE-4CCF-A048-68BD824D2050",
+      "profileName": "CRCLONSQL - 192.168.9.237",
+      "server": "192.168.9.237",
+      "encrypt": "Optional",
+      "id": "38E46C25-660B-4D2E-AB33-07CD22CDBA5E",
+      "database": "",
+      "commandTimeout": 30,
+      "profileSource": 0,
+      "user": "",
+      "password": ""
+    }
+  ],
+
+  "git.enableSmartCommit": true,
+  "security.allowedUNCHosts": ["192.168.9.237"],
+
+  "[sql]": { "editor.defaultFormatter": "dbcode.dbcode" },
+
+  "files.autoSave": "afterDelay",
+  "vscode-office.editorTheme": "One Dark",
+  "explorer.confirmPasteNative": false,
+
+  "editor.wordWrap": "on",
+
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+
+  "prettier.printWidth": 80,
+  "prettier.proseWrap": "always",
+  "prettier.htmlWhitespaceSensitivity": "ignore",
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "es5",
+  "prettier.semi": true,
+  "prettier.tabWidth": 2,
+  "prettier.useTabs": false,
+  "prettier.endOfLine": "lf",
+
+  "[javascript]": {
+    "editor.tabSize": 3,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[html]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[scss]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[less]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[yaml]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+}
